@@ -53,18 +53,13 @@ export default function App() {
     return result.ok
   }
 
-  const loadGoogleSongs = async ({ generateIfEmpty = false } = {}) => {
+  const loadGoogleSongs = async () => {
     setSourceStatus((value) => ({ ...value, loading: true, error: '' }))
     try {
       const repository = new PublicGoogleSheetsSongRepository(googleConfig)
       const result = await repository.listSongs()
       dispatch({ type: 'LOAD_SONGS', ...result, source: { type: 'google', label: `Google Sheet • ${result.songs.length} songs`, loadedAt: result.loadedAt } })
       setSourceStatus({ googleLoaded: true, loading: false, error: '' })
-      if (generateIfEmpty && state.sets.length === 0) {
-        const generated = generateSetlist({ songs: result.songs, settings: state.settings, excludedIds: [], lockedSlots: {} })
-        if (generated.ok) dispatch({ type: 'GENERATION_SUCCESS', sets: generated.sets })
-        else dispatch({ type: 'GENERATION_ERROR', error: generated.error, clear: true })
-      }
     } catch (error) {
       setSourceStatus((value) => ({ ...value, loading: false, error: error.message }))
     }
@@ -77,11 +72,6 @@ export default function App() {
       const result = await new CsvSongRepository(file).listSongs()
       dispatch({ type: 'LOAD_SONGS', ...result, source: { type: 'csv', label: `${file.name} • ${result.songs.length} songs`, loadedAt: result.loadedAt } })
       setSourceStatus((value) => ({ ...value, loading: false }))
-      if (state.sets.length === 0) {
-        const generated = generateSetlist({ songs: result.songs, settings: state.settings, excludedIds: [], lockedSlots: {} })
-        if (generated.ok) dispatch({ type: 'GENERATION_SUCCESS', sets: generated.sets })
-        else dispatch({ type: 'GENERATION_ERROR', error: generated.error, clear: true })
-      }
     } catch (error) {
       setSourceStatus((value) => ({ ...value, loading: false, error: `CSV load failed: ${error.message}` }))
     }
@@ -129,7 +119,7 @@ export default function App() {
       <Box maxW="1280px" mx="auto">
         <Flex className="print-header" as="header" direction={{ base: 'column', lg: 'row' }} align={{ base: 'stretch', lg: 'center' }} justify="space-between" gap="4" pb="4.5" mb="5" borderBottom="1px solid var(--border)">
           <Box><Heading as="h1" fontSize={{ base: 'xl', md: '2xl' }} fontWeight="900" letterSpacing="-.02em" color="var(--accent)">{state.title.trim() || 'ANTF Setlist Generator 3.0'}</Heading><Text className="no-print" color="var(--muted)" fontSize="sm">Primary: Time/Tuning • Secondary: Weighting • Tertiary: Genre &amp; Vocal Fatigue Spacing</Text></Box>
-          <DataSourceControls sourceStatus={sourceStatus} source={state.source} configured={googleConfigured} onLoadGoogle={() => loadGoogleSongs({ generateIfEmpty: true })} onRefresh={() => loadGoogleSongs()} onCsvFile={loadCsv} />
+          <DataSourceControls sourceStatus={sourceStatus} source={state.source} configured={googleConfigured} onLoadGoogle={loadGoogleSongs} onRefresh={loadGoogleSongs} onCsvFile={loadCsv} />
         </Flex>
 
         <SettingsPanel settings={state.settings} display={state.display} title={state.title} dispatch={dispatch} onValidationChange={setSettingsValid} />
