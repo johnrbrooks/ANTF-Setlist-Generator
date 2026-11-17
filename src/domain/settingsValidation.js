@@ -10,7 +10,7 @@ const selectRules = Object.freeze({
   maxGuitarChanges: [0, 1, 2, 3, 4, 99],
 })
 
-const booleanSettings = new Set(['groupTuning', 'groupGuitars', 'includeWeight4'])
+const booleanSettings = new Set(['groupTuning', 'groupGuitars', 'groupGenre', 'includeWeight4'])
 
 export function validateNumericSetting(name, rawValue) {
   const rule = NUMERIC_SETTING_RULES[name]

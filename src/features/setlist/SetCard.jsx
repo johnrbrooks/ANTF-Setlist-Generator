@@ -8,22 +8,23 @@ import { validateSet, formatSeconds } from '../../services/setlist/metrics'
 const badgeBase = { className: 'song-badge', fontSize: '10px', fontWeight: '800', px: '1.5', py: '.5', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '.03em' }
 
 function SongBadge({ children, bg = '#334155', color = '#e2e8f0', className = '' }) {
-  return <Badge {...badgeBase} className={`song-badge ${className}`} bg={bg} color={color}>{children}</Badge>
+  return <Badge {...badgeBase} className={`song-badge ${className}`} bg={bg} color={color} flexShrink="0" maxW={{ base: '130px', md: 'none' }} overflow="hidden" textOverflow="ellipsis" title={String(children)}>{children}</Badge>
 }
 
 function SortableSong({ song, index, set, setIndex, previous, display, locked, onLock, onSwap }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: song.id, data: { setIndex, songIndex: index } })
   const tuningChange = previous && previous.tuning !== song.tuning
   const guitarChange = previous && previous.twoGuitars !== song.twoGuitars
+  const simultaneousChanges = tuningChange && guitarChange
   const vocalClass = song.vocalDifficulty >= 5 ? 'vocal-5' : song.vocalDifficulty === 4 ? 'vocal-4' : song.vocalDifficulty === 3 ? 'vocal-3' : ''
   return (
     <>
-      {previous && (tuningChange || guitarChange) && <Flex className="transition-group" mx="1.5" my=".5" gap="1" wrap="wrap">{tuningChange && <Box className="transition-banner tuning-transition" fontSize="10px" fontWeight="800" px="2" py=".5" borderRadius="5px" textTransform="uppercase">⚡ Tuning: {previous.tuning} ➔ {song.tuning}</Box>}{guitarChange && <Box className="transition-banner guitar-transition" fontSize="10px" fontWeight="800" px="2" py=".5" borderRadius="5px" textTransform="uppercase">◆ Guitar Change ({song.twoGuitars ? '2 Guitars' : '1 Guitar'})</Box>}</Flex>}
-      <Box ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} data-dragging={isDragging} className="song-row" as="li" display="flex" alignItems="center" gap="2" px="2.5" py="1.5" borderBottom="1px solid rgba(51,65,85,.4)" bg={locked ? 'rgba(56,189,248,.1)' : 'transparent'} border={locked ? '1px solid rgba(56,189,248,.35)' : undefined} borderRadius="8px" _hover={{ bg: 'var(--surface-hover)' }}>
-        <Box className="drag-handle no-print" color="var(--text)" bg="rgba(15,23,42,.65)" border="1px solid #64748b" borderRadius="5px" px="1" fontSize="lg" {...attributes} {...listeners} aria-label={`Drag ${song.song}`}>⋮⋮</Box>
-        <Box flex="1" minW="0">
-          <Flex align="center" gap="1.5" wrap="wrap"><Text className="song-number" color="var(--muted)" fontSize="sm" fontWeight="800" w="20px">{index + 1}.</Text><Text className="song-name" fontWeight="800" fontSize="sm">{song.song}</Text>{display.artist && <Text className="song-artist" color="var(--muted)" fontSize="xs">— {song.artist}</Text>}</Flex>
-          <Flex pl="26px" mt=".5" gap="1" wrap="wrap">
+      {previous && (tuningChange || guitarChange) && <Flex className="transition-group" mx="1.5" my=".5" gap="1" wrap="nowrap" overflow="hidden">{tuningChange && <Box className="transition-banner tuning-transition" minW="0" flex={simultaneousChanges ? '1 1 0' : '1 1 100%'} fontSize={{ base: '9px', sm: '10px' }} fontWeight="800" px={{ base: '1.5', sm: '2' }} py=".5" borderRadius="5px" textAlign="center" textTransform="uppercase" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis" title={`Tuning: ${previous.tuning} to ${song.tuning}`}>⚡ Tuning: {previous.tuning} ➔ {song.tuning}</Box>}{guitarChange && <Box className="transition-banner guitar-transition" minW="0" flex={simultaneousChanges ? '1 1 0' : '1 1 100%'} fontSize={{ base: '9px', sm: '10px' }} fontWeight="800" px={{ base: '1.5', sm: '2' }} py=".5" borderRadius="5px" textAlign="center" textTransform="uppercase" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis" title={`Guitar change: ${song.twoGuitars ? '2 guitars' : '1 guitar'}`}>◆ Guitar Change ({song.twoGuitars ? '2 Guitars' : '1 Guitar'})</Box>}</Flex>}
+      <Box ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} data-dragging={isDragging} className="song-row" as="li" display="flex" alignItems="center" minW="0" gap="2" px="2.5" py="1.5" borderBottom="1px solid rgba(51,65,85,.4)" bg={locked ? 'rgba(56,189,248,.1)' : 'transparent'} border={locked ? '1px solid rgba(56,189,248,.35)' : undefined} borderRadius="8px" _hover={{ bg: 'var(--surface-hover)' }}>
+        <Box className="drag-handle no-print" flexShrink="0" color="var(--text)" bg="rgba(15,23,42,.65)" border="1px solid #64748b" borderRadius="5px" px="1" fontSize="lg" {...attributes} {...listeners} aria-label={`Drag ${song.song}`}>⋮⋮</Box>
+        <Box flex="1" minW="0" overflow="hidden">
+          <Flex align="center" gap="1.5" flexWrap={{ base: 'nowrap', md: 'wrap' }} overflow={{ base: 'hidden', md: 'visible' }}><Text className="song-number" flexShrink="0" color="var(--muted)" fontSize="sm" fontWeight="800" w="20px">{index + 1}.</Text><Text className="song-name" minW="0" flex={{ base: '1 1 auto', md: '0 1 auto' }} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" title={song.song} fontWeight="800" fontSize="sm">{song.song}</Text>{display.artist && <Text className="song-artist" flex={{ base: '0 1 38%', md: '0 1 auto' }} minW="0" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" title={song.artist} color="var(--muted)" fontSize="xs">— {song.artist}</Text>}</Flex>
+          <Flex pl="26px" mt=".5" gap="1" flexWrap={{ base: 'nowrap', md: 'wrap' }} overflow="hidden">
             {display.tuning && <SongBadge bg={song.tuning === 'Drop D' ? 'var(--drop-bg)' : 'var(--std-bg)'} color={song.tuning === 'Drop D' ? 'var(--drop-text)' : 'var(--std-text)'}>{song.tuning}</SongBadge>}
             {display.key && <SongBadge>Key: {song.key}</SongBadge>}
             {display.tempo && <SongBadge>{song.bpm} BPM</SongBadge>}
@@ -34,7 +35,7 @@ function SortableSong({ song, index, set, setIndex, previous, display, locked, o
             {set.title === 'Encore' ? <SongBadge bg="var(--role-enc)" color="white">Encore</SongBadge> : index === 0 && song.opener ? <SongBadge bg="var(--role-open)" color="white">Opener</SongBadge> : index === set.songs.length - 1 && song.closer ? <SongBadge bg="var(--role-close)" color="white">Closer</SongBadge> : null}
           </Flex>
         </Box>
-        <Flex className="no-print" gap="1"><AppButton size="xs" minW="32px" aria-label={locked ? `Unlock ${song.song}` : `Lock ${song.song}`} title="Lock/Unlock Song" onClick={onLock}>{locked ? '🔒' : '🔓'}</AppButton><AppButton size="xs" minW="32px" aria-label={`Swap ${song.song}`} title="Swap Song" onClick={onSwap}>↻</AppButton></Flex>
+        <Flex className="no-print" flexShrink="0" gap="1"><AppButton size="xs" minW="32px" aria-label={locked ? `Unlock ${song.song}` : `Lock ${song.song}`} title="Lock/Unlock Song" onClick={onLock}>{locked ? '🔒' : '🔓'}</AppButton><AppButton size="xs" minW="32px" aria-label={`Swap ${song.song}`} title="Swap Song" onClick={onSwap}>↻</AppButton></Flex>
       </Box>
     </>
   )
@@ -45,9 +46,9 @@ export default function SetCard({ set, setIndex, regularSetCount, settings, disp
   const metrics = validateSet(set, settings)
   return (
     <Box className="set-card" bg="var(--surface)" border="1px solid var(--border)" borderRadius="12px" overflow="hidden" alignSelf="start">
-      <Flex className="set-header" bg="rgba(15,23,42,.6)" px="3.5" py="2.5" borderBottom="1px solid var(--border)" justify="space-between" align="center" gap="2" onClick={() => setExpanded((value) => !value)} cursor="pointer">
-        <Flex align="center" gap="2" wrap="wrap"><Text className="set-title" color="var(--accent)" fontWeight="800">{set.title}</Text><Text className="no-print" color="var(--muted)" fontSize="xs">{expanded ? '▾' : '▸'}</Text>{set.title !== 'Encore' && <select className="set-position-select no-print" aria-label={`Move ${set.title} to position`} value={setIndex} onClick={(event) => event.stopPropagation()} onChange={(event) => { event.stopPropagation(); onMoveSet(Number(event.target.value)) }}>{Array.from({ length: regularSetCount }, (_, index) => <option key={index} value={index}>Move to Set {index + 1}</option>)}</select>}</Flex>
-        <Text className="set-meta" textAlign="right" color="var(--muted)" fontSize="xs">{set.songs.length} songs • {formatSeconds(metrics.totalSeconds)}<br />{metrics.tuningChanges} Tuning / {metrics.guitarChanges} Guitar swaps</Text>
+      <Flex className="set-header" bg="rgba(15,23,42,.6)" px="3.5" py="2.5" borderBottom="1px solid var(--border)" justify="space-between" align="center" minW="0" gap="2" onClick={() => setExpanded((value) => !value)} cursor="pointer">
+        <Flex align="center" minW="0" gap="2"><Text className="set-title" flexShrink="0" color="var(--accent)" fontWeight="800">{set.title}</Text><Text className="no-print" flexShrink="0" color="var(--muted)" fontSize="xs">{expanded ? '▾' : '▸'}</Text>{set.title !== 'Encore' && <select className="set-position-select no-print" aria-label={`Move ${set.title} to position`} value={setIndex} onClick={(event) => event.stopPropagation()} onChange={(event) => { event.stopPropagation(); onMoveSet(Number(event.target.value)) }}>{Array.from({ length: regularSetCount }, (_, index) => <option key={index} value={index}>Move to Set {index + 1}</option>)}</select>}</Flex>
+        <Text className="set-meta" flexShrink="0" whiteSpace="nowrap" textAlign="right" color="var(--muted)" fontSize="xs">{set.songs.length} songs • {formatSeconds(metrics.totalSeconds)}<br />{metrics.tuningChanges} Tuning / {metrics.guitarChanges} Guitar swaps</Text>
       </Flex>
       <Box className="set-content" display={expanded ? 'block' : 'none'}>
         {metrics.warnings.length > 0 && <Box className="no-print" bg="rgba(127,29,29,.55)" color="#fecaca" px="3" py="2" fontSize="xs">{metrics.warnings.map((warning) => <Text key={warning}>⚠ {warning}</Text>)}</Box>}

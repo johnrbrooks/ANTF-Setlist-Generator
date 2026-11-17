@@ -29,12 +29,26 @@ export function calculateOrderCost(songs, settings) {
   for (let index = 1; index < songs.length; index += 1) {
     if (songs[index].vocalDifficulty >= 4 && songs[index - 1].vocalDifficulty >= 4) vocalFatigue += 1
   }
+  let genreGrouping = 0
+  if (settings.groupGenre && songs.length) {
+    let runLength = 1
+    for (let index = 1; index <= songs.length; index += 1) {
+      if (index < songs.length && songs[index].genre === songs[index - 1].genre) {
+        runLength += 1
+      } else {
+        if (runLength === 1) genreGrouping += 2
+        else if (runLength > 3) genreGrouping += runLength - 3
+        runLength = 1
+      }
+    }
+  }
   return transitions.tuningChanges * (settings.groupTuning ? 10 : 1)
     + transitions.guitarChanges * (settings.groupGuitars ? 5 : 1)
     + vocalFatigue * 10
+    + genreGrouping
 }
 
-function orderSetSongs(songs, groupTuning, groupGuitars, fixedIndices = new Set()) {
+function orderSetSongs(songs, groupTuning, groupGuitars, groupGenre, fixedIndices = new Set()) {
   if (songs.length <= 3) return songs
   const fixedMap = {}
   const movable = []
@@ -73,6 +87,7 @@ function orderSetSongs(songs, groupTuning, groupGuitars, fixedIndices = new Set(
   const strategyC = []
   const remaining = [...movable]
   let current = fixedMap[2] || fixedMap[1] || opener
+  let genreRunLength = 1
   while (remaining.length) {
     let bestIndex = 0
     let bestScore = -Infinity
@@ -80,16 +95,18 @@ function orderSetSongs(songs, groupTuning, groupGuitars, fixedIndices = new Set(
       let score = 0
       if (song.tuning === current.tuning) score += 2
       if (song.twoGuitars === current.twoGuitars) score += 1
-      if (song.genre === current.genre) score += 1.5
+      if (groupGenre && song.genre === current.genre) score += genreRunLength < 3 ? 1.5 : -1.5
       if (current.vocalDifficulty >= 4 && song.vocalDifficulty >= 4) score -= 4
       if (score > bestScore) { bestScore = score; bestIndex = index }
     })
-    current = remaining.splice(bestIndex, 1)[0]
-    strategyC.push(current)
+    const next = remaining.splice(bestIndex, 1)[0]
+    genreRunLength = next.genre === current.genre ? genreRunLength + 1 : 1
+    current = next
+    strategyC.push(next)
   }
 
   return [build(strategyA), build(strategyB), build(strategyC)].reduce((best, candidate) => {
-    const cost = calculateOrderCost(candidate, { groupTuning, groupGuitars })
+    const cost = calculateOrderCost(candidate, { groupTuning, groupGuitars, groupGenre })
     return !best || cost < best.cost ? { songs: candidate, cost } : best
   }, null).songs
 }
@@ -109,12 +126,10 @@ function rolePreferredCandidates(candidates, set, songIndex) {
     return closers.length ? closers : candidates
   }
   if (songIndex === 0) {
-    const openers = candidates.filter((song) => song.opener)
-    if (openers.length) return openers
+    return candidates.filter((song) => song.opener)
   }
   if (songIndex === set.songs.length - 1) {
-    const closers = candidates.filter((song) => song.closer)
-    if (closers.length) return closers
+    return candidates.filter((song) => song.closer)
   }
   return candidates
 }
@@ -193,9 +208,9 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
     if (!opener) {
       const weightOnePool = regularPool.filter((song) => song.weight === 1)
       const openers = weightOnePool.filter((song) => song.opener && !usedIds.has(song.id))
-      opener = weightedPick(openers.length ? openers : weightOnePool, usedIds, rng)
+      opener = weightedPick(openers, usedIds, rng)
     }
-    if (!opener || opener.encoreOnly || opener.weight !== 1) return null
+    if (!opener || !opener.opener || opener.encoreOnly || opener.weight !== 1) return null
     setSongs.push(opener)
     usedIds.add(opener.id)
 
@@ -203,6 +218,8 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
       let pick = lockedAt(slot)
       if (!pick) {
         let slotPool = regularPool.filter((song) => song.weight === 1 && song.tuning === opener.tuning && !usedIds.has(song.id))
+        const nonRoleSongs = slotPool.filter((song) => !song.opener && !song.closer)
+        if (nonRoleSongs.length) slotPool = nonRoleSongs
         const previous = setSongs.at(-1)
         if (previous?.vocalDifficulty >= 4) {
           const vocalRecovery = slotPool.filter((song) => song.vocalDifficulty < 4)
@@ -224,6 +241,8 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
     let middleCount = 0
     while (currentSeconds < minSeconds || setSongs.length < highestLockIndex) {
       let pool = regularPool.filter((song) => !usedIds.has(song.id))
+      const nonRoleSongs = pool.filter((song) => !song.opener && !song.closer)
+      if (nonRoleSongs.length) pool = nonRoleSongs
       if (settings.maxTuningChanges === 0) pool = pool.filter((song) => song.tuning === opener.tuning)
       if (!pool.length) break
       const last = setSongs.at(-1)
@@ -251,19 +270,17 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
 
     let closerPool = regularPool.filter((song) => song.closer && !usedIds.has(song.id))
     if (settings.maxTuningChanges === 0) closerPool = closerPool.filter((song) => song.tuning === opener.tuning)
+    const closerOnlyPool = closerPool.filter((song) => !song.opener)
+    if (closerOnlyPool.length) closerPool = closerOnlyPool
     let closer = weightedPick(closerPool, usedIds, rng)
-    if (!closer) {
-      let fallback = regularPool.filter((song) => !usedIds.has(song.id))
-      if (settings.maxTuningChanges === 0) fallback = fallback.filter((song) => song.tuning === opener.tuning)
-      closer = weightedPick(fallback, usedIds, rng)
-    }
     if (!closer) return null
     usedIds.add(closer.id)
     setSongs.push(closer)
-    setSongs = orderSetSongs(setSongs, settings.groupTuning, settings.groupGuitars, fixedIndices)
+    setSongs = orderSetSongs(setSongs, settings.groupTuning, settings.groupGuitars, settings.groupGenre, fixedIndices)
     setSongs = applyLockedReplacements(setSongs, locks, usedIds)
 
     if (setSongs.length < 4 || new Set(setSongs.map((song) => song.id)).size !== setSongs.length || !hasValidRegularStart(setSongs)) return null
+    if (!setSongs[0].opener || !setSongs.at(-1).closer) return null
     const metrics = calculateSetMetrics(setSongs, settings.bufferSeconds)
     if (metrics.totalSeconds < minSeconds || metrics.totalSeconds > maxSeconds) return null
     if (metrics.tuningChanges > settings.maxTuningChanges || metrics.guitarChanges > settings.maxGuitarChanges) return null
@@ -304,6 +321,14 @@ export function generateSetlist({ songs, settings, excludedIds = [], lockedSlots
   if (weightOneCount < settings.numSets * 3) {
     return { ok: false, error: `Active regular pool has ${weightOneCount} Weight 1 songs; at least ${settings.numSets * 3} are required for the first three slots of every set.` }
   }
+  const openerCount = regularPool.filter((song) => song.opener && song.weight === 1).length
+  if (openerCount < settings.numSets) {
+    return { ok: false, error: `Active regular pool has ${openerCount} Weight 1 opener songs; at least ${settings.numSets} are required.` }
+  }
+  const closerCount = regularPool.filter((song) => song.closer).length
+  if (closerCount < settings.numSets) {
+    return { ok: false, error: `Active regular pool has ${closerCount} closer songs; at least ${settings.numSets} are required.` }
+  }
   if (new Set([...regularPool, ...encorePool].map((song) => song.id)).size < minimumRegular + settings.encoreCount) {
     return { ok: false, error: 'The active pool does not contain enough unique songs for these sets and encore.' }
   }
@@ -314,6 +339,9 @@ export function generateSetlist({ songs, settings, excludedIds = [], lockedSlots
     const [setIndex, songIndex] = key.split('-').map(Number)
     if (setIndex < settings.numSets && songIndex < 3 && byId.get(id)?.weight !== 1) {
       return { ok: false, error: `Locked song in Set ${setIndex + 1}, slot ${songIndex + 1} must be Weight 1.` }
+    }
+    if (setIndex < settings.numSets && songIndex === 0 && !byId.get(id)?.opener) {
+      return { ok: false, error: `Locked song in Set ${setIndex + 1}, slot 1 must be marked as an opener.` }
     }
   }
 

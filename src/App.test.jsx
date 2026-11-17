@@ -7,27 +7,40 @@ import App from './App'
 afterEach(cleanup)
 
 describe('App', () => {
-  it('renders the configuration and empty state', () => {
+  it('renders the configuration and primary actions', () => {
     render(<ChakraProvider value={defaultSystem}><App /></ChakraProvider>)
     expect(screen.getByText('ANTF Lighthorse 12-16-26')).toBeInTheDocument()
     expect(screen.getByText(/Load the public band Sheet or a CSV/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Generate New Setlist/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Generate Setlist/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Song Pool/ })).toHaveLength(2)
   })
 
   it('allows direct numeric entry and blocks generation while a setting is invalid', async () => {
     const user = userEvent.setup()
     render(<ChakraProvider value={defaultSystem}><App /></ChakraProvider>)
     const targetLength = screen.getByLabelText(/Target Set Length/)
-    const generate = screen.getByRole('button', { name: /Generate New Setlist/ })
 
     await user.clear(targetLength)
     await user.type(targetLength, '61')
     expect(screen.getByRole('alert')).toHaveTextContent('20–60 whole minutes')
-    await waitFor(() => expect(generate).toBeDisabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: /Generate Setlist/ })).toBeDisabled())
 
     await user.clear(targetLength)
     await user.type(targetLength, '50')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    await waitFor(() => expect(generate).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: /Generate Setlist/ })).toBeEnabled())
+  })
+
+  it('opens mobile settings sections independently', async () => {
+    const user = userEvent.setup()
+    render(<ChakraProvider value={defaultSystem}><App /></ChakraProvider>)
+    const clustering = screen.getByRole('button', { name: /Clustering & Pool/ })
+    const filters = screen.getByRole('button', { name: /Stage Sheet Filters/ })
+
+    expect(clustering).toHaveAttribute('aria-expanded', 'false')
+    expect(filters).toHaveAttribute('aria-expanded', 'false')
+    await user.click(clustering)
+    expect(clustering).toHaveAttribute('aria-expanded', 'true')
+    expect(filters).toHaveAttribute('aria-expanded', 'false')
   })
 })

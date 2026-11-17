@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../domain/constants'
 import { normalizeRows } from '../song-data/normalizeSongs'
 import { calculateSetMetrics } from './metrics'
-import { generateSetlist, getActivePool, selectSwapSong, weightedPick } from './generator'
+import { calculateOrderCost, generateSetlist, getActivePool, selectSwapSong, weightedPick } from './generator'
 
 const csv = fs.readFileSync(path.resolve(process.cwd(), 'Song List - MASTER LIST.csv'), 'utf8')
 const songs = normalizeRows(Papa.parse(csv, { header: true, skipEmptyLines: true }).data).songs
@@ -37,8 +37,21 @@ describe('setlist generator', () => {
       expect(metrics.guitarChanges).toBeLessThanOrEqual(DEFAULT_SETTINGS.maxGuitarChanges)
       expect(new Set(set.songs.slice(0, 3).map((song) => song.tuning)).size).toBe(1)
       expect(set.songs.slice(0, 3).every((song) => song.weight === 1)).toBe(true)
+      expect(set.songs[0].opener).toBe(true)
+      expect(set.songs.at(-1).closer).toBe(true)
       expect(set.songs.some((song) => song.encoreOnly)).toBe(false)
     })
+  })
+
+  it('preserves opener and closer roles across randomized generations', () => {
+    for (let seed = 1; seed <= 50; seed += 1) {
+      const result = generateSetlist({ songs, settings: { ...DEFAULT_SETTINGS }, rng: seeded(seed) })
+      expect(result.ok, `seed ${seed}: ${result.error}`).toBe(true)
+      result.sets.filter((set) => set.title !== 'Encore').forEach((set) => {
+        expect(set.songs[0].opener, `seed ${seed}: ${set.title} opener`).toBe(true)
+        expect(set.songs.at(-1).closer, `seed ${seed}: ${set.title} closer`).toBe(true)
+      })
+    }
   })
 
   it('honors a locked middle slot', () => {
@@ -57,6 +70,21 @@ describe('setlist generator', () => {
   it('uses configured weighting', () => {
     const pick = weightedPick([{ ...songs[0], id: 'a', weight: 1 }, { ...songs[1], id: 'b', weight: 4 }], new Set(), () => 0)
     expect(pick.id).toBe('a')
+  })
+
+  it('treats two-to-three song genre runs as a tertiary ordering preference', () => {
+    const base = { ...songs[0], tuning: 'Standard', twoGuitars: false, vocalDifficulty: 1 }
+    const grouped = [
+      { ...base, id: 'a1', genre: 'A' },
+      { ...base, id: 'a2', genre: 'A' },
+      { ...base, id: 'b1', genre: 'B' },
+      { ...base, id: 'b2', genre: 'B' },
+    ]
+    const scattered = [grouped[0], grouped[2], grouped[1], grouped[3]]
+    const enabled = { groupTuning: true, groupGuitars: true, groupGenre: true }
+    const disabled = { ...enabled, groupGenre: false }
+    expect(calculateOrderCost(grouped, enabled)).toBeLessThan(calculateOrderCost(scattered, enabled))
+    expect(calculateOrderCost(grouped, disabled)).toBe(calculateOrderCost(scattered, disabled))
   })
 
   it('swaps with a candidate that preserves generator constraints and priorities', () => {
@@ -86,5 +114,12 @@ describe('setlist generator', () => {
     const result = generateSetlist({ songs, settings: { ...DEFAULT_SETTINGS }, lockedSlots: { '0-1': nonPrioritySong.id }, rng: seeded(8) })
     expect(result).toMatchObject({ ok: false })
     expect(result.error).toContain('must be Weight 1')
+  })
+
+  it('rejects a Weight 1 lock that is not marked as an opener in slot one', () => {
+    const nonOpener = songs.find((song) => song.weight === 1 && !song.opener)
+    const result = generateSetlist({ songs, settings: { ...DEFAULT_SETTINGS }, lockedSlots: { '0-0': nonOpener.id }, rng: seeded(8) })
+    expect(result).toMatchObject({ ok: false })
+    expect(result.error).toContain('must be marked as an opener')
   })
 })

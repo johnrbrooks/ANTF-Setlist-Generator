@@ -17,5 +17,7 @@ describe('settings validation', () => {
     expect(validateNumericSetting('bufferSeconds', '21').valid).toBe(false)
     expect(isValidSettingValue('maxTuningChanges', 99)).toBe(true)
     expect(isValidSettingValue('maxTuningChanges', 4)).toBe(false)
+    expect(isValidSettingValue('groupGenre', true)).toBe(true)
+    expect(isValidSettingValue('groupGenre', 'true')).toBe(false)
   })
 })

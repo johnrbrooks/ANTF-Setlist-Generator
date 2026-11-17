@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   maxGuitarChanges: 4,
   groupTuning: true,
   groupGuitars: true,
+  groupGenre: true,
   includeWeight4: false,
 })
 

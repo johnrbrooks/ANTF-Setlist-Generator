@@ -8,6 +8,7 @@ import DataSourceControls from './features/data-source/DataSourceControls'
 import SettingsPanel from './features/settings/SettingsPanel'
 import { AddSongModal, SongPoolModal } from './features/song-pool/SongPoolModal'
 import SetCard from './features/setlist/SetCard'
+import useScrollActivity from './hooks/useScrollActivity'
 import { downloadSetlistCsv } from './services/export/csvExport'
 import { CsvSongRepository } from './services/song-data/csvRepository'
 import { PublicGoogleSheetsSongRepository } from './services/song-data/publicGoogleSheetsRepository'
@@ -33,6 +34,7 @@ export default function App() {
   const [poolOpen, setPoolOpen] = useState(false)
   const [addTarget, setAddTarget] = useState(null)
   const [settingsValid, setSettingsValid] = useState(true)
+  const scrolling = useScrollActivity()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
@@ -118,8 +120,20 @@ export default function App() {
     <Box minH="100vh" bg={COLORS.bg} color={COLORS.text} px={{ base: 3, md: 5 }} py={{ base: 3, md: 5 }}>
       <Box maxW="1280px" mx="auto">
         <Flex className="print-header" as="header" direction={{ base: 'column', lg: 'row' }} align={{ base: 'stretch', lg: 'center' }} justify="space-between" gap="4" pb="4.5" mb="5" borderBottom="1px solid var(--border)">
-          <Box><Heading as="h1" fontSize={{ base: 'xl', md: '2xl' }} fontWeight="900" letterSpacing="-.02em" color="var(--accent)">{state.title.trim() || 'ANTF Setlist Generator 3.0'}</Heading><Text className="no-print" color="var(--muted)" fontSize="sm">Primary: Time/Tuning • Secondary: Weighting • Tertiary: Genre &amp; Vocal Fatigue Spacing</Text></Box>
-          <DataSourceControls sourceStatus={sourceStatus} source={state.source} configured={googleConfigured} onLoadGoogle={loadGoogleSongs} onRefresh={loadGoogleSongs} onCsvFile={loadCsv} />
+          <Box flex="1" minW="0"><Heading as="h1" title={state.title.trim() || 'ANTF Setlist Generator 3.0'} fontSize={{ base: 'xl', md: '2xl' }} fontWeight="900" letterSpacing="-.02em" color="var(--accent)" whiteSpace={{ base: 'nowrap', md: 'normal' }} overflow="hidden" textOverflow="ellipsis">{state.title.trim() || 'ANTF Setlist Generator 3.0'}</Heading><Text className="no-print" color="var(--muted)" fontSize="sm" lineHeight="1.45" whiteSpace="normal">Primary: Time/Tuning • Secondary: Weighting • Tertiary: Genre &amp; Vocal Fatigue Spacing</Text></Box>
+          <DataSourceControls
+            sourceStatus={sourceStatus}
+            source={state.source}
+            configured={googleConfigured}
+            poolSize={activeRegularPool.length}
+            hasSetlist={Boolean(state.sets.length)}
+            onLoadGoogle={loadGoogleSongs}
+            onRefresh={loadGoogleSongs}
+            onCsvFile={loadCsv}
+            onOpenPool={() => setPoolOpen(true)}
+            onDownload={() => downloadSetlistCsv(state.sets)}
+            onPrint={() => window.print()}
+          />
         </Flex>
 
         <SettingsPanel settings={state.settings} display={state.display} title={state.title} dispatch={dispatch} onValidationChange={setSettingsValid} />
@@ -128,9 +142,9 @@ export default function App() {
         {state.sourceChanged && <Box className="no-print" bg="rgba(30,64,175,.4)" color="#bfdbfe" border="1px solid #3b82f6" borderRadius="10px" p="3" mb="4">Songs were refreshed. The displayed setlist is preserved as a snapshot; regenerate to apply the updated pool.</Box>}
         {state.generationError && <Box className="no-print" bg="#7f1d1d" color="#fecaca" border="1px solid #ef4444" borderRadius="12px" p="4" mb="4" textAlign="center"><Text fontWeight="900" color="white">⚠ No Setlist Available</Text><Text>{state.generationError}</Text></Box>}
 
-        <Flex className="mobile-sticky-actions no-print" mb="5" align="center" justify="space-between" gap="2" wrap="wrap">
-          <Flex gap="2" wrap="wrap"><AppButton tone="primary" disabled={!settingsValid} title={!settingsValid ? 'Correct the highlighted configuration fields before generating.' : undefined} onClick={() => runGeneration()}>⚡ Generate New Setlist</AppButton><AppButton onClick={() => setPoolOpen(true)}>📋 Song Pool ({activeRegularPool.length})</AppButton></Flex>
-          <Flex gap="2" align="center" wrap="wrap"><Box bg="var(--surface)" border="1px solid #64748b" borderRadius="999px" px="3.5" py="1.5" color="var(--muted)" fontSize="sm">Total: <Text as="strong" color="white">{gigMetrics.totalSongs} songs</Text> • <Text as="strong" color="white">{formatGigDuration(gigMetrics.totalSeconds)}</Text></Box><AppButton disabled={!state.sets.length} onClick={() => downloadSetlistCsv(state.sets)}>⬇ CSV</AppButton><AppButton disabled={!state.sets.length} onClick={() => window.print()}>🖨 Print</AppButton></Flex>
+        <Flex className="desktop-actions no-print" display={{ base: 'none', md: 'flex' }} mb="5" align="center" justify="space-between" gap="2" wrap="wrap">
+          <AppButton tone="primary" disabled={!settingsValid} title={!settingsValid ? 'Correct the highlighted configuration fields before generating.' : undefined} onClick={() => runGeneration()}>⚡ Generate New Setlist</AppButton>
+          <Box bg="var(--surface)" border="1px solid #64748b" borderRadius="999px" px="3.5" py="1.5" color="var(--muted)" fontSize="sm">Total: <Text as="strong" color="white">{gigMetrics.totalSongs} songs</Text> • <Text as="strong" color="white">{formatGigDuration(gigMetrics.totalSeconds)}</Text></Box>
         </Flex>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -140,6 +154,12 @@ export default function App() {
         </DndContext>
         {!state.sets.length && !state.generationError && <Box py="16" textAlign="center" color="var(--muted)"><Text fontSize="4xl">🎸</Text><Text mt="2" fontWeight="800">Load the public band Sheet or a CSV to build a setlist.</Text></Box>}
       </Box>
+
+      <Flex className="mobile-bottom-bar no-print" data-hidden={scrolling} display={{ base: 'flex', md: 'none' }} align="center" justify="space-between" gap="2">
+        <AppButton tone="primary" size="sm" flexShrink="1" minW="0" px="3" disabled={!settingsValid} title={!settingsValid ? 'Correct the highlighted configuration fields before generating.' : undefined} onClick={() => runGeneration()}>⚡ Generate Setlist</AppButton>
+        <AppButton tone="pool" size="sm" flexShrink="0" w="40px" minW="40px" px="0" aria-label={`Open Song Pool (${activeRegularPool.length} songs)`} title={`Song Pool (${activeRegularPool.length} songs)`} onClick={() => setPoolOpen(true)}>📋</AppButton>
+        <Text minW="0" color="var(--muted)" fontSize="xs" textAlign="right" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">Total: <Text as="strong" color="white">{formatGigDuration(gigMetrics.totalSeconds)}</Text></Text>
+      </Flex>
 
       <SongPoolModal open={poolOpen} onClose={() => setPoolOpen(false)} songs={state.songs} excludedIds={state.excludedIds} onToggle={(id) => dispatch({ type: 'TOGGLE_EXCLUDE', id })} />
       <AddSongModal open={addTarget !== null} onClose={() => setAddTarget(null)} title={addTarget !== null ? state.sets[addTarget]?.title : ''} songs={availableToAdd} onAdd={(id) => { const song = state.songs.find((item) => item.id === id); if (song) dispatch({ type: 'ADD_SONG', setIndex: addTarget, song }); setAddTarget(null) }} />
