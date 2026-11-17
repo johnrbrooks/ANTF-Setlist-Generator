@@ -35,5 +35,3 @@ export const DEFAULT_DISPLAY = Object.freeze({
   tempo: false,
   key: false,
 })
-
-export const GOOGLE_SHEETS_READONLY_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly'

@@ -5,6 +5,14 @@ export function formatSeconds(totalSeconds) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
+export function formatGigDuration(totalSeconds) {
+  const totalMinutes = Math.max(0, Math.round((totalSeconds || 0) / 60))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (!hours) return `${minutes} min`
+  return `${hours} hr ${minutes} min`
+}
+
 export function countTransitions(songs) {
   let tuningChanges = 0
   let guitarChanges = 0
@@ -41,6 +49,7 @@ export function validateSet(set, settings) {
     if (set.songs.at(-1) && !set.songs.at(-1).closer) warnings.push('Last song is not marked as a closer.')
     const firstThree = set.songs.slice(0, 3)
     if (firstThree.length === 3 && new Set(firstThree.map((song) => song.tuning)).size > 1) warnings.push('The first three songs do not share a tuning.')
+    if (firstThree.some((song) => song.weight !== 1)) warnings.push('The first three songs must all be Weight 1.')
     if (set.songs.some((song) => song.encoreOnly)) warnings.push('Encore-only song is in a regular set.')
   }
   if (metrics.tuningChanges > settings.maxTuningChanges) warnings.push(`${metrics.tuningChanges} tuning changes exceed the selected limit.`)

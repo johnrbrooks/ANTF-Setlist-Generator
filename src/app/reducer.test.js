@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { appReducer, initialState } from './reducer'
 
-const song = (id, encoreOnly = false) => ({ id, song: id, encoreOnly })
+const song = (id, encoreOnly = false, weight = 1) => ({ id, song: id, encoreOnly, weight })
 
 describe('app reducer', () => {
   it('remaps locks when songs move between sets', () => {
@@ -16,5 +16,40 @@ describe('app reducer', () => {
     const next = appReducer(state, { type: 'LOAD_SONGS', songs: [song('a')], issues: [], source: { type: 'google' } })
     expect([...next.excludedIds]).toEqual(['a'])
     expect(next.lockedSlots).toEqual({ '0-0': 'a' })
+  })
+
+  it('rejects invalid configuration values at the state boundary', () => {
+    const invalidMinutes = appReducer(initialState, { type: 'SET_SETTING', name: 'targetMinutes', value: 90 })
+    const invalidBuffer = appReducer(initialState, { type: 'SET_SETTING', name: 'bufferSeconds', value: 17 })
+    expect(invalidMinutes).toBe(initialState)
+    expect(invalidBuffer).toBe(initialState)
+  })
+
+  it('moves a regular set to a new position, relabels it, and remaps locks', () => {
+    const state = {
+      ...initialState,
+      sets: [
+        { id: 'original-1', title: 'Set 1', songs: [song('a')] },
+        { id: 'original-2', title: 'Set 2', songs: [song('b')] },
+        { id: 'encore', title: 'Encore', songs: [song('c')] },
+      ],
+      lockedSlots: { '0-0': 'a' },
+    }
+    const next = appReducer(state, { type: 'MOVE_SET', fromIndex: 0, toIndex: 1 })
+    expect(next.sets.map((set) => [set.id, set.title])).toEqual([
+      ['original-2', 'Set 1'],
+      ['original-1', 'Set 2'],
+      ['encore', 'Encore'],
+    ])
+    expect(next.lockedSlots).toEqual({ '1-0': 'a' })
+  })
+
+  it('blocks song moves that would put a non-Weight 1 song in an opening slot', () => {
+    const state = {
+      ...initialState,
+      sets: [{ id: 'set-1', title: 'Set 1', songs: [song('a'), song('b'), song('c'), song('heavy', false, 2)] }],
+    }
+    const next = appReducer(state, { type: 'MOVE_SONG', fromSet: 0, fromIndex: 3, toSet: 0, toIndex: 1 })
+    expect(next).toBe(state)
   })
 })

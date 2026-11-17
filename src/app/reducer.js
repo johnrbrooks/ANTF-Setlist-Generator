@@ -1,4 +1,5 @@
 import { DEFAULT_DISPLAY, DEFAULT_SETTINGS } from '../domain/constants'
+import { isValidSettingValue } from '../domain/settingsValidation'
 
 export const initialState = {
   title: 'ANTF Lighthorse 12-16-26',
@@ -29,10 +30,29 @@ function updateSetSong(state, setIndex, songIndex, song) {
   return { ...state, sets, lockedSlots }
 }
 
+export function moveSongInSets(sourceSets, { fromSet, fromIndex, toSet, toIndex }) {
+  const sets = sourceSets.map((set) => ({ ...set, songs: [...set.songs] }))
+  const [moved] = sets[fromSet].songs.splice(fromIndex, 1)
+  let targetIndex = toIndex
+  if (fromSet === toSet && fromIndex < toIndex) targetIndex -= 1
+  targetIndex = Math.max(0, Math.min(targetIndex, sets[toSet].songs.length))
+  sets[toSet].songs.splice(targetIndex, 0, moved)
+  return sets
+}
+
+export function regularStartsUseWeightOne(sets) {
+  return sets
+    .filter((set) => set.title !== 'Encore')
+    .every((set) => set.songs.slice(0, 3).every((song) => song.weight === 1))
+}
+
 export function appReducer(state, action) {
   switch (action.type) {
     case 'SET_TITLE': return { ...state, title: action.value }
-    case 'SET_SETTING': return { ...state, settings: { ...state.settings, [action.name]: action.value }, lockedSlots: action.name === 'numSets' ? {} : state.lockedSlots }
+    case 'SET_SETTING': {
+      if (!isValidSettingValue(action.name, action.value)) return state
+      return { ...state, settings: { ...state.settings, [action.name]: action.value }, lockedSlots: action.name === 'numSets' ? {} : state.lockedSlots }
+    }
     case 'SET_DISPLAY': return { ...state, display: { ...state.display, [action.name]: action.value } }
     case 'LOAD_SONGS': {
       const validIds = new Set(action.songs.map((song) => song.id))
@@ -71,12 +91,19 @@ export function appReducer(state, action) {
     }
     case 'MOVE_SONG': {
       const lockedIds = new Set(Object.values(state.lockedSlots))
-      const sets = state.sets.map((set) => ({ ...set, songs: [...set.songs] }))
-      const [moved] = sets[action.fromSet].songs.splice(action.fromIndex, 1)
-      let targetIndex = action.toIndex
-      if (action.fromSet === action.toSet && action.fromIndex < action.toIndex) targetIndex -= 1
-      targetIndex = Math.max(0, Math.min(targetIndex, sets[action.toSet].songs.length))
-      sets[action.toSet].songs.splice(targetIndex, 0, moved)
+      const sets = moveSongInSets(state.sets, action)
+      if (!regularStartsUseWeightOne(sets)) return state
+      return { ...state, sets, lockedSlots: rebuildLocks(sets, lockedIds) }
+    }
+    case 'MOVE_SET': {
+      const regularSets = state.sets.filter((set) => set.title !== 'Encore')
+      const encore = state.sets.find((set) => set.title === 'Encore')
+      if (action.fromIndex < 0 || action.fromIndex >= regularSets.length || action.toIndex < 0 || action.toIndex >= regularSets.length || action.fromIndex === action.toIndex) return state
+      const lockedIds = new Set(Object.values(state.lockedSlots))
+      const [moved] = regularSets.splice(action.fromIndex, 1)
+      regularSets.splice(action.toIndex, 0, moved)
+      const relabeled = regularSets.map((set, index) => ({ ...set, title: `Set ${index + 1}` }))
+      const sets = encore ? [...relabeled, encore] : relabeled
       return { ...state, sets, lockedSlots: rebuildLocks(sets, lockedIds) }
     }
     default: return state

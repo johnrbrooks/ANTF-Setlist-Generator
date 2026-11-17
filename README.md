@@ -14,7 +14,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The app is usable without Google configuration through **Load CSV**. The migrated `Song List - MASTER LIST.csv` contains stable IDs and the `Encore Only` field.
+The app reads a public, view-only Google Sheet without OAuth. It is also usable through **Load CSV**; the migrated `Song List - MASTER LIST.csv` contains stable IDs and the `Encore Only` field.
 
 Useful commands:
 
@@ -41,28 +41,25 @@ Song ID, Song, Artist, Key, BPM, Song Length, 2 Guitars?, Tuning, Weighting, Sty
 - `Encore Only` also makes a song an encore candidate.
 - Invalid rows are skipped and displayed as row-level warnings instead of silently receiving guessed musical data.
 
-### Google Cloud setup
+### Public Google Sheet setup
 
-1. Create a Google Cloud project and enable the Google Sheets API.
-2. Configure the OAuth consent screen for the dedicated band account.
-3. Create an OAuth 2.0 **Web application** client.
-4. Add `http://localhost:5173` and the stable Railway/custom domain as Authorized JavaScript origins.
-5. Share the private Sheet with the dedicated band account.
-6. Copy `.env.example` to `.env.local` and set:
+1. In Google Sheets, choose **Share**.
+2. Under **General access**, select **Anyone with the link** and **Viewer**.
+3. Copy `.env.example` to `.env.local` and set the normal sharing URL and optional A1 column range:
 
 ```text
-VITE_GOOGLE_CLIENT_ID=...
-VITE_GOOGLE_SHEET_ID=...
-VITE_GOOGLE_SHEET_RANGE=Songs!A:O
+VITE_GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/d/.../edit?gid=...
+VITE_GOOGLE_SHEET_RANGE=A:O
 ```
 
-The app requests `spreadsheets.readonly`, fetches only that configured range, and keeps the short-lived access token in memory. OAuth client IDs and Sheet IDs are public browser configuration; never add a client secret, service-account key, password, or refresh token.
+The `gid` in the sharing URL selects the tab, so no tab name or Google Cloud project is required. The app converts this URL to Google's public CSV query endpoint and reads columns A:O through the same validation pipeline used for uploaded CSV files.
+
+`.env.local` is ignored by Git, but `VITE_*` values are embedded in the browser bundle and the public request is visible in browser developer tools. This keeps the URL out of source control, not secret from app users. Do not put sensitive data in the public Sheet.
 
 ## Architecture
 
 - `src/domain` — constants and the normalized song contract.
-- `src/services/auth` — Google Identity Services token flow.
-- `src/services/song-data` — interchangeable Google Sheets and CSV repositories plus shared normalization.
+- `src/services/song-data` — interchangeable public Google Sheets and CSV repositories plus shared normalization.
 - `src/services/setlist` — pure weighted generation, ordering, metrics, and validation.
 - `src/services/export` — standards-compliant CSV export.
 - `src/features` — responsive settings, data-source controls, song-pool dialogs, and setlist editor.
@@ -73,9 +70,8 @@ The UI never reads Google or CSV rows directly. Both repositories return the sam
 ## Railway deployment
 
 1. Push this directory to a GitHub repository and create a Railway service from it.
-2. Add the three `VITE_GOOGLE_*` variables in Railway before building.
+2. Add `VITE_GOOGLE_SHEET_URL` and `VITE_GOOGLE_SHEET_RANGE` in Railway before building.
 3. Generate a stable Railway domain or attach a custom domain.
-4. Add that exact origin to the OAuth client in Google Cloud and redeploy.
 
 `railway.json` configures `npm run build` and `npm run start`. The production command serves `dist` as a single-page application on Railway's `$PORT`.
 

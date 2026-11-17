@@ -1,7 +1,8 @@
-import { Badge, Box, Button, Flex, Text } from '@chakra-ui/react'
+import { Badge, Box, Flex, Text } from '@chakra-ui/react'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState } from 'react'
+import AppButton from '../../components/AppButton'
 import { validateSet, formatSeconds } from '../../services/setlist/metrics'
 
 const badgeBase = { className: 'song-badge', fontSize: '10px', fontWeight: '800', px: '1.5', py: '.5', borderRadius: '5px', textTransform: 'uppercase', letterSpacing: '.03em' }
@@ -17,9 +18,9 @@ function SortableSong({ song, index, set, setIndex, previous, display, locked, o
   const vocalClass = song.vocalDifficulty >= 5 ? 'vocal-5' : song.vocalDifficulty === 4 ? 'vocal-4' : song.vocalDifficulty === 3 ? 'vocal-3' : ''
   return (
     <>
-      {previous && (tuningChange || guitarChange) && <Flex className="transition-banner" bg="var(--trans-bg)" color="var(--trans-text)" fontSize="10px" fontWeight="800" px="2" py=".5" mx="1.5" my=".5" border="1px dashed rgba(253,224,71,.4)" borderRadius="5px" textTransform="uppercase" gap="1.5">⚡ {tuningChange && `Tuning: ${previous.tuning} ➔ ${song.tuning}`}{tuningChange && guitarChange && ' | '}{guitarChange && `Guitar Change (${song.twoGuitars ? '2 Guitars' : '1 Guitar'})`}</Flex>}
+      {previous && (tuningChange || guitarChange) && <Flex className="transition-group" mx="1.5" my=".5" gap="1" wrap="wrap">{tuningChange && <Box className="transition-banner tuning-transition" fontSize="10px" fontWeight="800" px="2" py=".5" borderRadius="5px" textTransform="uppercase">⚡ Tuning: {previous.tuning} ➔ {song.tuning}</Box>}{guitarChange && <Box className="transition-banner guitar-transition" fontSize="10px" fontWeight="800" px="2" py=".5" borderRadius="5px" textTransform="uppercase">◆ Guitar Change ({song.twoGuitars ? '2 Guitars' : '1 Guitar'})</Box>}</Flex>}
       <Box ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} data-dragging={isDragging} className="song-row" as="li" display="flex" alignItems="center" gap="2" px="2.5" py="1.5" borderBottom="1px solid rgba(51,65,85,.4)" bg={locked ? 'rgba(56,189,248,.1)' : 'transparent'} border={locked ? '1px solid rgba(56,189,248,.35)' : undefined} borderRadius="8px" _hover={{ bg: 'var(--surface-hover)' }}>
-        <Box className="drag-handle no-print" color="var(--muted)" px="1" fontSize="lg" {...attributes} {...listeners} aria-label={`Drag ${song.song}`}>⋮⋮</Box>
+        <Box className="drag-handle no-print" color="var(--text)" bg="rgba(15,23,42,.65)" border="1px solid #64748b" borderRadius="5px" px="1" fontSize="lg" {...attributes} {...listeners} aria-label={`Drag ${song.song}`}>⋮⋮</Box>
         <Box flex="1" minW="0">
           <Flex align="center" gap="1.5" wrap="wrap"><Text className="song-number" color="var(--muted)" fontSize="sm" fontWeight="800" w="20px">{index + 1}.</Text><Text className="song-name" fontWeight="800" fontSize="sm">{song.song}</Text>{display.artist && <Text className="song-artist" color="var(--muted)" fontSize="xs">— {song.artist}</Text>}</Flex>
           <Flex pl="26px" mt=".5" gap="1" wrap="wrap">
@@ -33,19 +34,19 @@ function SortableSong({ song, index, set, setIndex, previous, display, locked, o
             {set.title === 'Encore' ? <SongBadge bg="var(--role-enc)" color="white">Encore</SongBadge> : index === 0 && song.opener ? <SongBadge bg="var(--role-open)" color="white">Opener</SongBadge> : index === set.songs.length - 1 && song.closer ? <SongBadge bg="var(--role-close)" color="white">Closer</SongBadge> : null}
           </Flex>
         </Box>
-        <Flex className="no-print" gap="1"><Button size="xs" variant="outline" borderColor="var(--border)" title="Lock/Unlock Song" onClick={onLock}>{locked ? '🔒' : '🔓'}</Button><Button size="xs" variant="outline" borderColor="var(--border)" title="Swap Song" onClick={onSwap}>↻</Button></Flex>
+        <Flex className="no-print" gap="1"><AppButton size="xs" minW="32px" aria-label={locked ? `Unlock ${song.song}` : `Lock ${song.song}`} title="Lock/Unlock Song" onClick={onLock}>{locked ? '🔒' : '🔓'}</AppButton><AppButton size="xs" minW="32px" aria-label={`Swap ${song.song}`} title="Swap Song" onClick={onSwap}>↻</AppButton></Flex>
       </Box>
     </>
   )
 }
 
-export default function SetCard({ set, setIndex, settings, display, lockedSlots, onLock, onSwap, onAdd }) {
+export default function SetCard({ set, setIndex, regularSetCount, settings, display, lockedSlots, onLock, onSwap, onAdd, onMoveSet }) {
   const [expanded, setExpanded] = useState(true)
   const metrics = validateSet(set, settings)
   return (
     <Box className="set-card" bg="var(--surface)" border="1px solid var(--border)" borderRadius="12px" overflow="hidden" alignSelf="start">
       <Flex className="set-header" bg="rgba(15,23,42,.6)" px="3.5" py="2.5" borderBottom="1px solid var(--border)" justify="space-between" align="center" gap="2" onClick={() => setExpanded((value) => !value)} cursor="pointer">
-        <Flex align="center" gap="2"><Text className="set-title" color="var(--accent)" fontWeight="800">{set.title}</Text><Text className="no-print" color="var(--muted)" fontSize="xs">{expanded ? '▾' : '▸'}</Text></Flex>
+        <Flex align="center" gap="2" wrap="wrap"><Text className="set-title" color="var(--accent)" fontWeight="800">{set.title}</Text><Text className="no-print" color="var(--muted)" fontSize="xs">{expanded ? '▾' : '▸'}</Text>{set.title !== 'Encore' && <select className="set-position-select no-print" aria-label={`Move ${set.title} to position`} value={setIndex} onClick={(event) => event.stopPropagation()} onChange={(event) => { event.stopPropagation(); onMoveSet(Number(event.target.value)) }}>{Array.from({ length: regularSetCount }, (_, index) => <option key={index} value={index}>Move to Set {index + 1}</option>)}</select>}</Flex>
         <Text className="set-meta" textAlign="right" color="var(--muted)" fontSize="xs">{set.songs.length} songs • {formatSeconds(metrics.totalSeconds)}<br />{metrics.tuningChanges} Tuning / {metrics.guitarChanges} Guitar swaps</Text>
       </Flex>
       <Box className="set-content" display={expanded ? 'block' : 'none'}>
@@ -53,7 +54,7 @@ export default function SetCard({ set, setIndex, settings, display, lockedSlots,
         <SortableContext items={set.songs.map((song) => song.id)} strategy={verticalListSortingStrategy}>
           <Box className="song-list" as="ul" listStyleType="none" m="0" p="1.5">{set.songs.map((song, index) => <SortableSong key={song.id} song={song} index={index} set={set} setIndex={setIndex} previous={set.songs[index - 1]} display={display} locked={Boolean(lockedSlots[`${setIndex}-${index}`])} onLock={() => onLock(index)} onSwap={() => onSwap(index)} />)}</Box>
         </SortableContext>
-        <Box className="no-print" p="1.5" borderTop="1px solid var(--border)" bg="rgba(15,23,42,.3)"><Button w="100%" size="xs" variant="outline" borderStyle="dashed" borderColor="var(--border)" color="var(--accent)" onClick={onAdd}>+ Add Song to {set.title}</Button></Box>
+        <Box className="no-print" p="1.5" borderTop="1px solid var(--border)" bg="rgba(15,23,42,.3)"><AppButton w="100%" size="xs" borderStyle="dashed" color="var(--accent)" onClick={onAdd}>+ Add Song to {set.title}</AppButton></Box>
       </Box>
     </Box>
   )

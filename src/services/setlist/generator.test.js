@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../domain/constants'
 import { normalizeRows } from '../song-data/normalizeSongs'
 import { calculateSetMetrics } from './metrics'
-import { generateSetlist, getActivePool, weightedPick } from './generator'
+import { generateSetlist, getActivePool, selectSwapSong, weightedPick } from './generator'
 
 const csv = fs.readFileSync(path.resolve(process.cwd(), 'Song List - MASTER LIST.csv'), 'utf8')
 const songs = normalizeRows(Papa.parse(csv, { header: true, skipEmptyLines: true }).data).songs
@@ -36,6 +36,7 @@ describe('setlist generator', () => {
       expect(metrics.tuningChanges).toBeLessThanOrEqual(DEFAULT_SETTINGS.maxTuningChanges)
       expect(metrics.guitarChanges).toBeLessThanOrEqual(DEFAULT_SETTINGS.maxGuitarChanges)
       expect(new Set(set.songs.slice(0, 3).map((song) => song.tuning)).size).toBe(1)
+      expect(set.songs.slice(0, 3).every((song) => song.weight === 1)).toBe(true)
       expect(set.songs.some((song) => song.encoreOnly)).toBe(false)
     })
   })
@@ -56,5 +57,34 @@ describe('setlist generator', () => {
   it('uses configured weighting', () => {
     const pick = weightedPick([{ ...songs[0], id: 'a', weight: 1 }, { ...songs[1], id: 'b', weight: 4 }], new Set(), () => 0)
     expect(pick.id).toBe('a')
+  })
+
+  it('swaps with a candidate that preserves generator constraints and priorities', () => {
+    const generated = generateSetlist({ songs, settings: { ...DEFAULT_SETTINGS }, rng: seeded(42) })
+    expect(generated.ok, generated.error).toBe(true)
+    const result = selectSwapSong({
+      sets: generated.sets,
+      setIndex: 0,
+      songIndex: 4,
+      songs,
+      settings: { ...DEFAULT_SETTINGS },
+      rng: seeded(17),
+    })
+    expect(result.ok, result.error).toBe(true)
+    const updated = generated.sets[0].songs.map((song, index) => index === 4 ? result.song : song)
+    const metrics = calculateSetMetrics(updated, DEFAULT_SETTINGS.bufferSeconds)
+    expect(updated.slice(0, 3).every((song) => song.weight === 1)).toBe(true)
+    expect(new Set(updated.slice(0, 3).map((song) => song.tuning)).size).toBe(1)
+    expect(metrics.tuningChanges).toBeLessThanOrEqual(DEFAULT_SETTINGS.maxTuningChanges)
+    expect(metrics.guitarChanges).toBeLessThanOrEqual(DEFAULT_SETTINGS.maxGuitarChanges)
+    expect(metrics.totalSeconds).toBeGreaterThanOrEqual(DEFAULT_SETTINGS.targetMinutes * 60 - 240)
+    expect(metrics.totalSeconds).toBeLessThanOrEqual(DEFAULT_SETTINGS.targetMinutes * 60 + 240)
+  })
+
+  it('rejects a non-Weight 1 lock in an opening slot', () => {
+    const nonPrioritySong = songs.find((song) => song.weight === 2)
+    const result = generateSetlist({ songs, settings: { ...DEFAULT_SETTINGS }, lockedSlots: { '0-1': nonPrioritySong.id }, rng: seeded(8) })
+    expect(result).toMatchObject({ ok: false })
+    expect(result.error).toContain('must be Weight 1')
   })
 })
