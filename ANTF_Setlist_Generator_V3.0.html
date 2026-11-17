@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANTF Setlist Generator 2.0</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface-hover: #273549;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-hover: #0284c7;
+    --std-bg: #064e3b;
+    --std-text: #6ee7b7;
+    --drop-bg: #78350f;
+    --drop-text: #fcd34d;
+    --role-open: #1d4ed8;
+    --role-close: #9d174d;
+    --role-enc: #6d28d9;
+    --trans-bg: #451a03;
+    --trans-text: #fde047;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 20px;
+  }
+  .container { max-width: 1280px; margin: 0 auto; }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 0.9rem; }
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+    align-items: end;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+  select, input[type="text"], input[type="number"], input[type="file"] {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.92rem;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .checkbox-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .btn-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
+  button {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 15px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s ease;
+  }
+  button:hover { background: var(--surface-hover); border-color: var(--accent); }
+  button.primary {
+    background: var(--accent);
+    color: #0f172a;
+    border-color: var(--accent);
+  }
+  button.primary:hover { background: var(--accent-hover); color: #fff; }
+  .stats-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .stats-pill strong { color: var(--text); }
+  
+  .warning-banner {
+    background: #7f1d1d;
+    border: 1px solid #ef4444;
+    color: #fecaca;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .warning-banner h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; color: #fff; }
+
+  .sets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 18px;
+  }
+  .set-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .set-header {
+    background: rgba(15, 23, 42, 0.6);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .set-title { font-weight: 700; font-size: 1.05rem; color: var(--accent); }
+  .set-meta { font-size: 0.8rem; color: var(--muted); text-align: right; }
+  .song-list { list-style: none; padding: 6px; flex: 1; min-height: 40px; }
+  .song-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+    transition: background 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
+  }
+  .song-item:last-child { border-bottom: none; }
+  .song-item:hover { background: var(--surface-hover); }
+  .song-item.locked { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); }
+  .song-item.dragging {
+    opacity: 0.45;
+    background: var(--surface-hover);
+    border: 1px dashed var(--accent);
+  }
+  .song-item.drag-over-top { border-top: 2.5px solid var(--accent); }
+  .song-item.drag-over-bottom { border-bottom: 2.5px solid var(--accent); }
+  
+  .drag-handle {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 4px 4px 4px 0;
+    user-select: none;
+    display: flex;
+    align-items: center;
+  }
+  .drag-handle:hover { color: var(--accent); }
+  .drag-handle:active { cursor: grabbing; }
+
+  .song-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .song-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .song-num { color: var(--muted); font-size: 0.82rem; font-weight: 700; width: 20px; }
+  .song-name { font-weight: 700; font-size: 0.94rem; }
+  .song-artist { color: var(--muted); font-size: 0.8rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; padding-left: 26px; }
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .b-std { background: var(--std-bg); color: var(--std-text); }
+  .b-drop { background: var(--drop-bg); color: var(--drop-text); }
+  .b-info { background: #334155; color: #e2e8f0; }
+  .b-role { color: #fff; }
+  .r-open { background: var(--role-open); }
+  .r-close { background: var(--role-close); }
+  .r-enc { background: var(--role-enc); }
+  
+  /* Vocal difficulty color-coded badges */
+  .v-yellow { background: #ca8a04 !important; color: #fefacc !important; }
+  .v-orange { background: #c2410c !important; color: #ffedd5 !important; }
+  .v-red { background: #b91c1c !important; color: #fee2e2 !important; }
+
+  .transition-banner {
+    background: var(--trans-bg);
+    color: var(--trans-text);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    margin: 2px 6px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px dashed rgba(253, 224, 71, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .song-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    padding: 4px 7px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .add-song-footer {
+    padding: 6px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    background: rgba(15, 23, 42, 0.3);
+  }
+  .add-song-btn {
+    font-size: 0.76rem;
+    padding: 3px 8px;
+    color: var(--accent);
+    background: transparent;
+    border: 1px dashed var(--border);
+    width: 100%;
+    border-radius: 6px;
+  }
+  .add-song-btn:hover { background: var(--surface-hover); border-color: var(--accent); color: #fff; }
+
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-body { padding: 16px; overflow-y: auto; }
+  .pool-search { width: 100%; padding: 9px 12px; margin-bottom: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+  .pool-row { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  
+  @media print {
+    @page { size: portrait; margin: 0.2in; }
+    body { background: #fff; color: #000; padding: 0; font-size: 8pt; }
+    .controls, .btn-bar, .song-actions, .drag-handle, .subtitle, .upload-wrap, .warning-banner, .add-song-footer { display: none !important; }
+    header { border-bottom: 1px solid #000; margin-bottom: 4px; padding-bottom: 2px; }
+    h1 { font-size: 1.05rem; color: #000; }
+    h1 span { color: #000; }
+    .sets-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+    .set-card {
+      border: 1px solid #000;
+      background: #fff !important;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border-radius: 3px;
+    }
+    .set-header { background: #f1f5f9 !important; color: #000 !important; border-bottom: 1px solid #000 !important; padding: 2px 5px; }
+    .set-title { color: #000 !important; font-size: 0.78rem; }
+    .set-meta { color: #1e293b !important; font-size: 0.6rem; }
+    .song-list { padding: 2px 4px; }
+    .song-item { border-bottom: 1px solid #cbd5e1; padding: 2.5px 4px; background: #fff !important; }
+    .song-name { font-size: 0.92rem !important; color: #000; font-weight: 800; }
+    .song-num { color: #000; font-size: 0.92rem !important; font-weight: 800; width: 16px; }
+    .transition-banner { background: #fef08a !important; color: #713f12 !important; border: 1px solid #ca8a04 !important; font-size: 0.55rem; padding: 1px 3px; margin: 1px 2px; font-weight: 700; }
+    .badge { border: 1px solid #64748b; background: #f8fafc !important; color: #0f172a !important; font-size: 0.55rem; padding: 0.5px 3px; font-weight: 700; }
+    .v-yellow { background: #fef08a !important; color: #713f12 !important; border-color: #ca8a04 !important; }
+    .v-orange { background: #ffedd5 !important; color: #c2410c !important; border-color: #ea580c !important; }
+    .v-red { background: #fee2e2 !important; color: #b91c1c !important; border-color: #dc2626 !important; }
+    
+    body.print-hide-artist .song-artist { display: none !important; }
+    body.print-hide-genre .badge.b-genre { display: none !important; }
+    body.print-hide-vocal .badge.b-vocal { display: none !important; }
+    body.print-hide-duration .badge.b-duration { display: none !important; }
+    body.print-hide-guitars .badge.b-guitars { display: none !important; }
+    body.print-hide-tuning .badge.b-tuning { display: none !important; }
+    body.print-hide-tempo .badge.b-tempo { display: none !important; }
+    body.print-hide-key .badge.b-key { display: none !important; }
+  }
+
+  body.screen-hide-artist .song-artist { display: none !important; }
+  body.screen-hide-genre .badge.b-genre { display: none !important; }
+  body.screen-hide-vocal .badge.b-vocal { display: none !important; }
+  body.screen-hide-duration .badge.b-duration { display: none !important; }
+  body.screen-hide-guitars .badge.b-guitars { display: none !important; }
+  body.screen-hide-tuning .badge.b-tuning { display: none !important; }
+  body.screen-hide-tempo .badge.b-tempo { display: none !important; }
+  body.screen-hide-key .badge.b-key { display: none !important; }
+</style>
+</head>
+<body class="print-hide-artist print-hide-genre print-hide-vocal print-hide-duration screen-hide-artist">
+<div class="container">
+  <header>
+    <div>
+      <h1 id="headerTitle">ANTF <span>Setlist Generator 2.0</span></h1>
+      <div class="subtitle">Primary: Time/Tuning • Secondary: Weighting • Tertiary: Genre &amp; Vocal Fatigue Spacing</div>
+    </div>
+    <div class="upload-wrap">
+      <label for="csvUpload" style="display:block; margin-bottom:4px;">Load Updated CSV (Optional)</label>
+      <input type="file" id="csvUpload" accept=".csv">
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="control-group" style="grid-column: span 2;">
+      <label for="customHeaderInput">Gig / Stage Header Title</label>
+      <input type="text" id="customHeaderInput" value="ANTF Lighthorse 12-16-26" placeholder="e.g. ANTF Lighthorse 12-16-26" oninput="updateCustomHeader()">
+    </div>
+    <div class="control-group">
+      <label for="numSets">Number of Sets</label>
+      <select id="numSets">
+        <option value="3">3 Sets</option>
+        <option value="4" selected>4 Sets</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="targetMinutes">Target Set Length (Min)</label>
+      <input type="number" id="targetMinutes" min="20" max="60" value="45">
+    </div>
+    <div class="control-group">
+      <label for="bufferSeconds">Song Buffer (Sec)</label>
+      <select id="bufferSeconds">
+        <option value="15">15 sec</option>
+        <option value="20">20 sec</option>
+        <option value="25">25 sec</option>
+        <option value="30" selected>30 sec</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="encoreCount">Encore Songs</label>
+      <select id="encoreCount">
+        <option value="0">No Encore</option>
+        <option value="1">1 Song</option>
+        <option value="2" selected>2 Songs</option>
+        <option value="3">3 Songs</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="maxTuningChanges">Max Tuning Changes / Set</label>
+      <select id="maxTuningChanges">
+        <option value="99">No Limit</option>
+        <option value="3">Max 3 Changes</option>
+        <option value="2" selected>Max 2 Changes</option>
+        <option value="1">Max 1 Change</option>
+        <option value="0">0 (Single Tuning Set)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="maxGuitarChanges">Max Guitar Changes / Set</label>
+      <select id="maxGuitarChanges">
+        <option value="99">No Limit</option>
+        <option value="4" selected>Max 4 Changes</option>
+        <option value="3">Max 3 Changes</option>
+        <option value="2">Max 2 Changes</option>
+        <option value="1">Max 1 Change</option>
+        <option value="0">0 (No Setup Change)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Clustering &amp; Pool</label>
+      <label class="checkbox-row"><input type="checkbox" id="groupTuning" checked> Group Standard / Drop D</label>
+      <label class="checkbox-row"><input type="checkbox" id="groupGuitars" checked> Group Guitar Swaps</label>
+      <label class="checkbox-row"><input type="checkbox" id="includeW4"> Include Weight 4</label>
+    </div>
+    <div class="control-group" style="grid-column: span 2; background: rgba(15, 23, 42, 0.4); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+      <label style="color: var(--accent); margin-bottom: 4px; display:block;">Stage Sheet Display Filters (Show / Hide Info)</label>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <label class="checkbox-row"><input type="checkbox" id="showArtist" onchange="updateDisplayFilters()"> Show Artist Name</label>
+        <label class="checkbox-row"><input type="checkbox" id="showGenre" onchange="updateDisplayFilters()"> Show Genre</label>
+        <label class="checkbox-row"><input type="checkbox" id="showVocal" onchange="updateDisplayFilters()"> Show Vocal Diff</label>
+        <label class="checkbox-row"><input type="checkbox" id="showDuration" onchange="updateDisplayFilters()"> Show Duration</label>
+        <label class="checkbox-row"><input type="checkbox" id="showGuitars" onchange="updateDisplayFilters()"> Show Guitar Count</label>
+        <label class="checkbox-row"><input type="checkbox" id="showTuning" onchange="updateDisplayFilters()"> Show Tuning</label>
+        <label class="checkbox-row"><input type="checkbox" id="showTempo" onchange="updateDisplayFilters()"> Show Tempo (BPM)</label>
+        <label class="checkbox-row"><input type="checkbox" id="showKey" onchange="updateDisplayFilters()"> Show Key</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-bar">
+    <div class="btn-group">
+      <button class="primary" onclick="generateSetlist()">⚡ Generate New Setlist</button>
+      <button onclick="openPoolModal()">📋 View / Exclude Song Pool (<span id="poolCount">85</span>)</button>
+    </div>
+    <div class="btn-group" style="align-items:center;">
+      <div class="stats-pill" id="gigSummary">Total: <strong>0 songs</strong> • <strong>0:00</strong></div>
+      <button onclick="exportCSV()">⬇ Export CSV</button>
+      <button onclick="window.print()">🖨 Print Stage Sheet</button>
+    </div>
+  </div>
+
+  <div class="warning-banner" id="warningBanner">
+    <h2>⚠️ No Setlist Available</h2>
+    <p id="warningText">Unable to generate valid setlists with your current song pool, exclusions, or strict constraints. Try including more songs or relaxing your transition limits.</p>
+  </div>
+
+  <div class="sets-grid" id="setsContainer"></div>
+</div>
+
+<div class="modal-backdrop" id="poolModal">
+  <div class="modal">
+    <div class="modal-header">
+      <strong>Song Pool &amp; Gig Exclusions</strong>
+      <button onclick="closePoolModal()">✕ Close</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="pool-search" id="poolSearch" placeholder="Search song, artist, genre, tuning, or vocal diff..." oninput="renderPoolList()">
+      <div id="poolList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addSongModal">
+  <div class="modal">
+    <div class="modal-header">
+      <strong id="addSongModalTitle">Add Song to Set</strong>
+      <button onclick="closeAddSongModal()">✕ Close</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="pool-search" id="addSongSearch" placeholder="Search available songs to add..." oninput="renderAddSongList()">
+      <div id="addSongList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_SONGS = [{"id": 1, "song": "The Anthem", "artist": "Good Charlotte", "key": "F# Major", "bpm": 162, "length": "2:55", "durationSec": 175, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 2, "song": "Holiday", "artist": "Green Day", "key": "F Minor", "bpm": 147, "length": "3:52", "durationSec": 232, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 3, "song": "I'm Just a Kid", "artist": "Simple Plan", "key": "E Major", "bpm": 112, "length": "3:18", "durationSec": 198, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 4, "song": "I Write Sins Not Tragedies", "artist": "Panic! At the Disco", "key": "A Minor", "bpm": 170, "length": "3:06", "durationSec": 186, "twoGuitars": false, "tuning": "Drop D", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": false}, {"id": 5, "song": "Dance, Dance", "artist": "Fall Out Boy", "key": "B Minor", "bpm": 114, "length": "3:00", "durationSec": 180, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 6, "song": "Sk8er Boi", "artist": "Avril Lavigne", "key": "D Major", "bpm": 150, "length": "3:24", "durationSec": 204, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 7, "song": "Teenagers", "artist": "My Chemical Romance", "key": "E Major", "bpm": 112, "length": "2:41", "durationSec": 161, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 8, "song": "Gives You Hell", "artist": "All-American Rejects", "key": "E Major", "bpm": 100, "length": "3:33", "durationSec": 213, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 9, "song": "1985", "artist": "Bowling for Soup", "key": "B Major", "bpm": 120, "length": "3:13", "durationSec": 193, "twoGuitars": true, "tuning": "Standard", "weight": 2, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 10, "song": "Stacy's Mom", "artist": "Fountains of Wayne", "key": "E Major", "bpm": 118, "length": "3:17", "durationSec": 197, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 11, "song": "Misery Business", "artist": "Paramore", "key": "E Minor", "bpm": 173, "length": "3:31", "durationSec": 211, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 5, "opener": false, "closer": true, "encore": false}, {"id": 12, "song": "The Middle", "artist": "Jimmy Eat World", "key": "D Major", "bpm": 162, "length": "2:46", "durationSec": 166, "twoGuitars": false, "tuning": "Drop D", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": true, "closer": false, "encore": false}, {"id": 13, "song": "Fat Lip", "artist": "Sum 41", "key": "A Major", "bpm": 196, "length": "2:58", "durationSec": 178, "twoGuitars": false, "tuning": "Drop D", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 3, "opener": true, "closer": true, "encore": false}, {"id": 14, "song": "Since U Been Gone", "artist": "Kelly Clarkson/A Day to Remember", "key": "Eb Major", "bpm": 128, "length": "3:18", "durationSec": 198, "twoGuitars": false, "tuning": "Drop D", "weight": 2, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": false}, {"id": 15, "song": "Numb", "artist": "Linkin Park", "key": "F# Major", "bpm": 110, "length": "3:07", "durationSec": 187, "twoGuitars": true, "tuning": "Drop D", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": false}, {"id": 16, "song": "MakeDamnSure", "artist": "Taking Back Sunday", "key": "C Minor", "bpm": 150, "length": "3:32", "durationSec": 212, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 17, "song": "Ohio is for Lovers", "artist": "Hawthorne Heights", "key": "C Minor", "bpm": 128, "length": "4:04", "durationSec": 244, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 18, "song": "Everybody Talks", "artist": "Neon Trees", "key": "Eb Major", "bpm": 155, "length": "2:57", "durationSec": 177, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 19, "song": "You Belong With Me", "artist": "Taylor Swift", "key": "F# Major", "bpm": 130, "length": "3:51", "durationSec": 231, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": false}, {"id": 20, "song": "Stick Season", "artist": "Noah Kahan/Knuckle Puck", "key": "A Major", "bpm": 120, "length": "3:20", "durationSec": 200, "twoGuitars": true, "tuning": "Standard", "weight": 2, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 21, "song": "Shut Up and Dance", "artist": "WALK THE MOON", "key": "Db Major", "bpm": 128, "length": "3:19", "durationSec": 199, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": true, "encore": false}, {"id": 22, "song": "My Own Worst Enemy", "artist": "Lit", "key": "E Major", "bpm": 103, "length": "2:49", "durationSec": 169, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 23, "song": "Teenage Dirtbag", "artist": "Wheatus", "key": "E Major", "bpm": 95, "length": "4:01", "durationSec": 241, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 24, "song": "The Great Escape", "artist": "Boys Like Girls", "key": "A Major", "bpm": 138, "length": "3:28", "durationSec": 208, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": false}, {"id": 25, "song": "All the Small Things", "artist": "Blink-182", "key": "C Major", "bpm": 149, "length": "2:48", "durationSec": 168, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": true, "encore": false}, {"id": 26, "song": "In Too Deep", "artist": "Sum 41", "key": "E Major", "bpm": 116, "length": "3:27", "durationSec": 207, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 27, "song": "First Date", "artist": "Blink-182", "key": "C Major", "bpm": 193, "length": "2:51", "durationSec": 171, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 28, "song": "Behind These Hazel Eyes", "artist": "Kelly Clarkson", "key": "F# Minor", "bpm": 90, "length": "3:18", "durationSec": 198, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 29, "song": "Shake It", "artist": "Metro Station", "key": "E Major", "bpm": 150, "length": "2:59", "durationSec": 179, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 30, "song": "Good Luck Babe", "artist": "Chappel Roan/senses", "key": "D Major", "bpm": 130, "length": "3:31", "durationSec": 211, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 31, "song": "Kids in America", "artist": "Kim Wilde/Billie Joe Armstrong", "key": "F# Minor", "bpm": 161, "length": "3:09", "durationSec": 189, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Oldie", "vocalDifficulty": 1, "opener": false, "closer": true, "encore": false}, {"id": 32, "song": "Don't Stop Believin'", "artist": "Journey", "key": "E Major", "bpm": 119, "length": "4:10", "durationSec": 250, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Oldie", "vocalDifficulty": 5, "opener": false, "closer": true, "encore": true}, {"id": 33, "song": "Smells Like Teen Spirit", "artist": "Nirvana", "key": "F Minor", "bpm": 117, "length": "5:01", "durationSec": 301, "twoGuitars": false, "tuning": "Standard", "weight": 3, "genre": "Heavy", "vocalDifficulty": 4, "opener": false, "closer": true, "encore": true}, {"id": 34, "song": "Sugar We're Goin' Down", "artist": "Fall Out Boy", "key": "D Major", "bpm": 162, "length": "3:49", "durationSec": 229, "twoGuitars": false, "tuning": "Drop D", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": true, "closer": false, "encore": true}, {"id": 35, "song": "Ocean Avenue", "artist": "Yellowcard", "key": "A Major", "bpm": 174, "length": "3:18", "durationSec": 198, "twoGuitars": false, "tuning": "Drop D", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": true}, {"id": 36, "song": "Meant to Live", "artist": "Switchfoot", "key": "C# Minor", "bpm": 154, "length": "3:20", "durationSec": 200, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 37, "song": "Good 4 U", "artist": "Olivia Rodrigo", "key": "C Minor", "bpm": 167, "length": "2:58", "durationSec": 178, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 38, "song": "Grand Theft Autumn", "artist": "Fall Out Boy", "key": "E Major", "bpm": 149, "length": "3:11", "durationSec": 191, "twoGuitars": true, "tuning": "Drop D", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 39, "song": "Dirty Little Secret", "artist": "All-American Rejects", "key": "Eb Major", "bpm": 144, "length": "3:13", "durationSec": 193, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 40, "song": "I'm Not Okay", "artist": "My Chemical Romance", "key": "A Major", "bpm": 179, "length": "3:08", "durationSec": 188, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": true, "closer": false, "encore": false}, {"id": 41, "song": "American Idiot", "artist": "Green Day", "key": "Ab Major", "bpm": 186, "length": "2:54", "durationSec": 174, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": true, "encore": false}, {"id": 42, "song": "The Rock Show", "artist": "Blink-182", "key": "A Major", "bpm": 193, "length": "2:51", "durationSec": 171, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 43, "song": "Move Along", "artist": "All-American Rejects", "key": "Eb Major", "bpm": 110, "length": "4:00", "durationSec": 240, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 44, "song": "Mr. Brightside", "artist": "The Killers", "key": "D Major", "bpm": 148, "length": "3:42", "durationSec": 222, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 1, "opener": false, "closer": true, "encore": true}, {"id": 45, "song": "Helena", "artist": "My Chemical Romance", "key": "F Minor", "bpm": 126, "length": "3:22", "durationSec": 202, "twoGuitars": false, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": true}, {"id": 46, "song": "Welcome to the Black Parade", "artist": "My Chemical Romance", "key": "G Major", "bpm": 97, "length": "5:11", "durationSec": 311, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 5, "opener": false, "closer": true, "encore": true}, {"id": 47, "song": "Swing Swing", "artist": "All-American Rejects", "key": "F Major", "bpm": 128, "length": "3:53", "durationSec": 233, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 48, "song": "Tell Me I'm a Wreck", "artist": "Every Avenue", "key": "A Major", "bpm": 128, "length": "3:40", "durationSec": 220, "twoGuitars": false, "tuning": "Standard", "weight": 3, "genre": "Emo Classic", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 49, "song": "Vindicated", "artist": "Dashboard Confessional", "key": "E Major", "bpm": 165, "length": "3:20", "durationSec": 200, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Emo Classic", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": false}, {"id": 50, "song": "The Kill", "artist": "30 Seconds to Mars", "key": "E Minor", "bpm": 183, "length": "3:51", "durationSec": 231, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Emo Classic", "vocalDifficulty": 5, "opener": false, "closer": false, "encore": false}, {"id": 51, "song": "Downfall of Us All", "artist": "A Day to Remember", "key": "D Major", "bpm": 183, "length": "3:26", "durationSec": 206, "twoGuitars": false, "tuning": "Drop D", "weight": 2, "genre": "Heavy", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 52, "song": "All Signs Point to Lauderdale", "artist": "A Day to Remember", "key": "G Major", "bpm": 170, "length": "3:17", "durationSec": 197, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 53, "song": "You're Gonna Go Far Kid", "artist": "The Offspring", "key": "A Minor", "bpm": 126, "length": "2:57", "durationSec": 177, "twoGuitars": false, "tuning": "Standard", "weight": 4, "genre": "Pop Punk", "vocalDifficulty": 5, "opener": false, "closer": false, "encore": false}, {"id": 54, "song": "Monsters", "artist": "All Time Low ft. Blackbear", "key": "E Minor", "bpm": 95, "length": "2:54", "durationSec": 174, "twoGuitars": true, "tuning": "Drop D", "weight": 3, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 55, "song": "High School Never Ends", "artist": "Bowling for Soup", "key": "D Major", "bpm": 124, "length": "3:29", "durationSec": 209, "twoGuitars": false, "tuning": "Standard", "weight": 3, "genre": "Pop", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": false}, {"id": 56, "song": "If It Means Alot to You", "artist": "A Day to Remember", "key": "C Major", "bpm": 136, "length": "4:03", "durationSec": 243, "twoGuitars": true, "tuning": "Drop D", "weight": 4, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": true}, {"id": 57, "song": "Just the Girl", "artist": "The Click Five", "key": "C Major", "bpm": 111, "length": "3:54", "durationSec": 234, "twoGuitars": true, "tuning": "Standard", "weight": 2, "genre": "Pop", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 58, "song": "Check Yes, Juliet", "artist": "We the Kings", "key": "E Major", "bpm": 160, "length": "3:39", "durationSec": 219, "twoGuitars": true, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 59, "song": "Say It Ain't So", "artist": "Weezer", "key": "E Major", "bpm": 76, "length": "4:18", "durationSec": 258, "twoGuitars": false, "tuning": "Standard", "weight": 3, "genre": "Oldie", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 60, "song": "Dammit", "artist": "Blink-182", "key": "C Major", "bpm": 215, "length": "2:45", "durationSec": 165, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": false, "closer": true, "encore": false}, {"id": 61, "song": "Jamie All Over", "artist": "Mayday Parade", "key": "Gb Major", "bpm": 184, "length": "3:36", "durationSec": 216, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 62, "song": "Scotty Doesn't Know", "artist": "Lustra", "key": "E Major", "bpm": 132, "length": "2:55", "durationSec": 175, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 63, "song": "Dear Maria, Count Me In", "artist": "All Time Low", "key": "E Major", "bpm": 181, "length": "3:02", "durationSec": 182, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": true}, {"id": 64, "song": "Right Now", "artist": "SR-71", "key": "A# Minor", "bpm": 144, "length": "2:47", "durationSec": 167, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 65, "song": "Basket Case", "artist": "Green Day", "key": "E Major", "bpm": 170, "length": "3:01", "durationSec": 181, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": true, "closer": false, "encore": false}, {"id": 66, "song": "Everlong", "artist": "Foo Fighters", "key": "D Major", "bpm": 158, "length": "4:10", "durationSec": 250, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Heavy", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": true}, {"id": 67, "song": "Weightless", "artist": "All Time Low", "key": "D Major", "bpm": 182, "length": "3:18", "durationSec": 198, "twoGuitars": true, "tuning": "Drop D", "weight": 1, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 68, "song": "Face Down", "artist": "The Red Jumpsuit Apparatus", "key": "Eb Minor", "bpm": 169, "length": "3:12", "durationSec": 192, "twoGuitars": true, "tuning": "Drop D", "weight": 2, "genre": "Emo Classic", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": false}, {"id": 69, "song": "Somebody That I Used to Know", "artist": "Gotye/Mayday Parade", "key": "E Minor", "bpm": 136, "length": "3:36", "durationSec": 216, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 70, "song": "What's My Age Again?", "artist": "Blink-182", "key": "F# Major", "bpm": 158, "length": "2:28", "durationSec": 148, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 71, "song": "Memory", "artist": "Sugarcult", "key": "C# Minor", "bpm": 156, "length": "3:44", "durationSec": 224, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 72, "song": "Welcome to My Life", "artist": "Simple Plan", "key": "Eb Major", "bpm": 128, "length": "3:22", "durationSec": 202, "twoGuitars": false, "tuning": "Standard", "weight": 3, "genre": "Pop Punk", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 73, "song": "The Hell Song", "artist": "Sum 41", "key": "B Minor", "bpm": 174, "length": "3:18", "durationSec": 198, "twoGuitars": true, "tuning": "Drop D", "weight": 3, "genre": "Pop Punk", "vocalDifficulty": 3, "opener": true, "closer": false, "encore": false}, {"id": 74, "song": "My Friends Over You", "artist": "New Found Glory", "key": "F# Major", "bpm": 174, "length": "3:40", "durationSec": 220, "twoGuitars": true, "tuning": "Standard", "weight": 2, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": true, "encore": false}, {"id": 75, "song": "Thnks fr the Mmrs", "artist": "Fall Out Boy", "key": "F# Minor", "bpm": 152, "length": "3:23", "durationSec": 203, "twoGuitars": false, "tuning": "Drop D", "weight": 4, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 76, "song": "The Best of Me", "artist": "The Starting Line", "key": "D Major", "bpm": 155, "length": "4:19", "durationSec": 259, "twoGuitars": true, "tuning": "Standard", "weight": 4, "genre": "Emo Classic", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 77, "song": "That's What You Get", "artist": "Paramore", "key": "E Major", "bpm": 163, "length": "3:40", "durationSec": 220, "twoGuitars": true, "tuning": "Drop D", "weight": 4, "genre": "Emo Classic", "vocalDifficulty": 4, "opener": false, "closer": false, "encore": false}, {"id": 78, "song": "Call Me Maybe", "artist": "Carly Rae Jepsen/Dose of Adolescence", "key": "G Major", "bpm": 120, "length": "3:13", "durationSec": 193, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Pop", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 79, "song": "Livin' On a Prayer", "artist": "Bon Jovi", "key": "E Minor", "bpm": 123, "length": "4:09", "durationSec": 249, "twoGuitars": false, "tuning": "Standard", "weight": 2, "genre": "Oldie", "vocalDifficulty": 5, "opener": false, "closer": true, "encore": true}, {"id": 80, "song": "Love Drunk", "artist": "Boys Like Girls", "key": "B Major", "bpm": 144, "length": "3:46", "durationSec": 226, "twoGuitars": true, "tuning": "Drop D", "weight": 3, "genre": "Pop", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 81, "song": "Summer of '69", "artist": "Bryan Adams", "key": "D Major", "bpm": 139, "length": "3:36", "durationSec": 216, "twoGuitars": false, "tuning": "Standard", "weight": 4, "genre": "Oldie", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 82, "song": "Danger Zone", "artist": "Kenny Loggins", "key": "E Minor", "bpm": 157, "length": "3:35", "durationSec": 215, "twoGuitars": false, "tuning": "Standard", "weight": 4, "genre": "Oldie", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}, {"id": 83, "song": "Skyway Avenue", "artist": "We the Kings", "key": "E Major", "bpm": 147, "length": "3:25", "durationSec": 205, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Pop Punk", "vocalDifficulty": 2, "opener": false, "closer": false, "encore": false}, {"id": 84, "song": "Burnin' Up", "artist": "Jonas Brothers", "key": "F# Minor", "bpm": 126, "length": "2:54", "durationSec": 174, "twoGuitars": true, "tuning": "Standard", "weight": 3, "genre": "Pop", "vocalDifficulty": 1, "opener": false, "closer": false, "encore": false}, {"id": 85, "song": "Only One", "artist": "Yellowcard", "key": "B Major", "bpm": 98, "length": "4:17", "durationSec": 257, "twoGuitars": true, "tuning": "Standard", "weight": 1, "genre": "Emo Classic", "vocalDifficulty": 3, "opener": false, "closer": false, "encore": false}];
+
+let allSongs = [...DEFAULT_SONGS];
+let excludedIds = new Set();
+let lockedSlots = {}; 
+let currentSets = []; 
+let dragState = null;
+let activeTargetSetIdx = null;
+
+const WEIGHT_MULTIPLIER = { 1: 14, 2: 7, 3: 2.5, 4: 0.7 };
+const BLACK_PARADE_ID = 46;
+
+function weightedPick(pool, usedIds) {
+  const candidates = pool.filter(s => !usedIds.has(s.id));
+  if (!candidates.length) return null;
+  let totalWeight = 0;
+  const weights = candidates.map(s => {
+    const w = WEIGHT_MULTIPLIER[s.weight] || 1;
+    totalWeight += w;
+    return w;
+  });
+  let r = Math.random() * totalWeight;
+  for (let i = 0; i < candidates.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return candidates[i];
+  }
+  return candidates[candidates.length - 1];
+}
+
+function getActivePool(isEncoreSet = false) {
+  const includeW4 = document.getElementById('includeW4').checked;
+  return allSongs.filter(s => {
+    if (excludedIds.has(s.id)) return false;
+    if (!includeW4 && s.weight === 4) return false;
+    if (!isEncoreSet && s.id === BLACK_PARADE_ID) return false;
+    return true;
+  });
+}
+
+function updateCustomHeader() {
+  const customText = document.getElementById('customHeaderInput').value.trim();
+  const titleEl = document.getElementById('headerTitle');
+  if (customText) {
+    titleEl.innerHTML = `<span>${customText}</span>`;
+  } else {
+    titleEl.innerHTML = `ANTF <span>Setlist Generator 2.0</span>`;
+  }
+}
+
+function updateDisplayFilters() {
+  const showArtist = document.getElementById('showArtist').checked;
+  const showGenre = document.getElementById('showGenre').checked;
+  const showVocal = document.getElementById('showVocal').checked;
+  const showDuration = document.getElementById('showDuration').checked;
+  const showGuitars = document.getElementById('showGuitars').checked;
+  const showTuning = document.getElementById('showTuning').checked;
+  const showTempo = document.getElementById('showTempo').checked;
+  const showKey = document.getElementById('showKey').checked;
+
+  const b = document.body;
+  b.classList.toggle('screen-hide-artist', !showArtist);
+  b.classList.toggle('screen-hide-genre', !showGenre);
+  b.classList.toggle('screen-hide-vocal', !showVocal);
+  b.classList.toggle('screen-hide-duration', !showDuration);
+  b.classList.toggle('screen-hide-guitars', !showGuitars);
+  b.classList.toggle('screen-hide-tuning', !showTuning);
+  b.classList.toggle('screen-hide-tempo', !showTempo);
+  b.classList.toggle('screen-hide-key', !showKey);
+
+  b.classList.toggle('print-hide-artist', !showArtist);
+  b.classList.toggle('print-hide-genre', !showGenre);
+  b.classList.toggle('print-hide-vocal', !showVocal);
+  b.classList.toggle('print-hide-duration', !showDuration);
+  b.classList.toggle('print-hide-guitars', !showGuitars);
+  b.classList.toggle('print-hide-tuning', !showTuning);
+  b.classList.toggle('print-hide-tempo', !showTempo);
+  b.classList.toggle('print-hide-key', !showKey);
+}
+
+function countTransitions(songs) {
+  let tuningChanges = 0;
+  let guitarChanges = 0;
+  for (let i = 1; i < songs.length; i++) {
+    if (songs[i].tuning !== songs[i - 1].tuning) tuningChanges++;
+    if (songs[i].twoGuitars !== songs[i - 1].twoGuitars) guitarChanges++;
+  }
+  return { tuningChanges, guitarChanges };
+}
+
+function orderSetSongs(songs, groupTuning, groupGuitars, lockedIndices = new Set()) {
+  if (songs.length <= 3) return songs;
+
+  const fixedMap = {};
+  const movable = [];
+
+  songs.forEach((song, idx) => {
+    if (idx === 0 || idx === songs.length - 1 || lockedIndices.has(idx)) {
+      fixedMap[idx] = song;
+    } else {
+      movable.push(song);
+    }
+  });
+
+  const opener = fixedMap[0];
+
+  for (let slot = 1; slot <= 2; slot++) {
+    if (!fixedMap[slot] && movable.length > 0) {
+      const prevSong = fixedMap[slot - 1];
+      let matchIdx = movable.findIndex(s => s.tuning === opener.tuning && prevSong && s.twoGuitars === prevSong.twoGuitars);
+      if (matchIdx < 0) matchIdx = movable.findIndex(s => s.tuning === opener.tuning);
+      if (matchIdx >= 0) {
+        fixedMap[slot] = movable.splice(matchIdx, 1)[0];
+      }
+    }
+  }
+
+  const openSlots = [];
+  for (let i = 0; i < songs.length; i++) {
+    if (!fixedMap[i]) openSlots.push(i);
+  }
+
+  const buildOrder = (sortedMovable) => {
+    const result = new Array(songs.length);
+    Object.keys(fixedMap).forEach(k => { result[Number(k)] = fixedMap[k]; });
+    openSlots.forEach((slotIdx, mIdx) => { result[slotIdx] = sortedMovable[mIdx]; });
+    return result.filter(Boolean);
+  };
+
+  if (movable.length <= 1) {
+    return buildOrder(movable);
+  }
+
+  const candidates = [];
+
+  const stratA = [...movable].sort((a, b) => {
+    if (a.tuning !== b.tuning) return a.tuning === opener.tuning ? -1 : 1;
+    if (a.twoGuitars !== b.twoGuitars) return (a.twoGuitars ? 1 : 0) - (b.twoGuitars ? 1 : 0);
+    return 0;
+  });
+  candidates.push(buildOrder(stratA));
+
+  const stratB = [...movable].sort((a, b) => {
+    if (a.tuning !== b.tuning) return a.tuning === opener.tuning ? -1 : 1;
+    if (a.twoGuitars !== b.twoGuitars) return (b.twoGuitars ? 1 : 0) - (a.twoGuitars ? 1 : 0);
+    return 0;
+  });
+  candidates.push(buildOrder(stratB));
+
+  const stratC = [];
+  const rem = [...movable];
+  let curr = fixedMap[2] || fixedMap[1] || opener;
+  while (rem.length > 0) {
+    let bestIdx = 0;
+    let bestScore = -1;
+    for (let i = 0; i < rem.length; i++) {
+      let score = 0;
+      if (rem[i].tuning === curr.tuning) score += 2;
+      if (rem[i].twoGuitars === curr.twoGuitars) score += 1;
+      if (rem[i].genre === curr.genre) score += 1.5;
+      if (curr.vocalDifficulty >= 4 && rem[i].vocalDifficulty >= 4) score -= 4;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+    curr = rem.splice(bestIdx, 1)[0];
+    stratC.push(curr);
+  }
+  candidates.push(buildOrder(stratC));
+
+  let bestOrder = candidates[0];
+  let lowestCost = Infinity;
+
+  candidates.forEach(cand => {
+    const { tuningChanges, guitarChanges } = countTransitions(cand);
+    
+    let vocalFatigueClips = 0;
+    for (let i = 1; i < cand.length; i++) {
+      if (cand[i].vocalDifficulty >= 4 && cand[i - 1].vocalDifficulty >= 4) {
+        vocalFatigueClips++;
+      }
+    }
+
+    const tWeight = groupTuning ? 10 : 1;
+    const gWeight = groupGuitars ? 5 : 1;
+    const cost = (tuningChanges * tWeight) + (guitarChanges * gWeight) + (vocalFatigueClips * 10);
+    if (cost < lowestCost) {
+      lowestCost = cost;
+      bestOrder = cand;
+    }
+  });
+
+  return bestOrder;
+}
+
+function attemptBuildSetlist(params) {
+  const { numSets, targetMin, bufferSec, encoreCount, maxTuningChanges, maxGuitarChanges, groupTuning, groupGuitars } = params;
+  const usedIds = new Set();
+  Object.values(lockedSlots).forEach(id => usedIds.add(id));
+
+  const regularPool = getActivePool(false);
+  const newSets = [];
+  const minAllowedSec = targetMin - 240; 
+  const maxAllowedSec = targetMin + 240; 
+
+  for (let sIdx = 0; sIdx < numSets; sIdx++) {
+    let setSongs = [];
+    let currentSetSec = 0;
+    const lockedIndices = new Set();
+
+    let opener = null;
+    const lockOpenerId = lockedSlots[`${sIdx}-0`];
+    if (lockOpenerId) {
+      opener = allSongs.find(x => x.id === lockOpenerId);
+      if (opener) lockedIndices.add(0);
+    }
+    if (!opener) {
+      let openPool = regularPool.filter(s => s.opener && !usedIds.has(s.id));
+      if (!openPool.length) openPool = regularPool.filter(s => !usedIds.has(s.id));
+      opener = weightedPick(openPool, usedIds) || weightedPick(regularPool, usedIds);
+    }
+    if (!opener) return null;
+
+    setSongs.push(opener);
+    usedIds.add(opener.id);
+    currentSetSec += opener.durationSec;
+
+    for (let slot = 1; slot <= 2; slot++) {
+      let songX = null;
+      const lockId = lockedSlots[`${sIdx}-${slot}`];
+      if (lockId) {
+        songX = allSongs.find(x => x.id === lockId);
+        if (songX) lockedIndices.add(slot);
+      }
+      if (!songX) {
+        let matchPool = regularPool.filter(s => s.tuning === opener.tuning && !usedIds.has(s.id));
+        if (!matchPool.length) return null;
+        songX = weightedPick(matchPool, usedIds);
+      }
+      if (!songX) return null;
+      if (songX.tuning !== opener.tuning) return null;
+
+      setSongs.push(songX);
+      usedIds.add(songX.id);
+      currentSetSec += bufferSec + songX.durationSec;
+    }
+
+    let middleSongs = [];
+    while (true) {
+      if (currentSetSec >= minAllowedSec) break;
+      let candPool = regularPool.filter(s => !usedIds.has(s.id));
+      if (maxTuningChanges === 0) {
+        candPool = candPool.filter(s => s.tuning === opener.tuning);
+      }
+      if (!candPool.length) break;
+
+      const lastSong = setSongs[setSongs.length - 1];
+      if (lastSong && lastSong.vocalDifficulty >= 4) {
+        const saferPool = candPool.filter(s => s.vocalDifficulty < 4);
+        if (saferPool.length > 0) candPool = saferPool;
+      }
+
+      let pick = null;
+      if (maxTuningChanges <= 1 && Math.random() < 0.75) {
+        const sameTuningPool = candPool.filter(s => s.tuning === opener.tuning);
+        if (sameTuningPool.length) pick = weightedPick(sameTuningPool, usedIds);
+      }
+      if (!pick) pick = weightedPick(candPool, usedIds);
+      if (!pick) break;
+
+      if (currentSetSec + bufferSec + pick.durationSec > maxAllowedSec + 120) {
+        const shorterPool = candPool.filter(s => currentSetSec + bufferSec + s.durationSec <= maxAllowedSec + 120);
+        if (shorterPool.length > 0) {
+          pick = weightedPick(shorterPool, usedIds);
+        } else {
+          break;
+        }
+      }
+
+      middleSongs.push(pick);
+      usedIds.add(pick.id);
+      currentSetSec += pick.durationSec + bufferSec;
+
+      if (currentSetSec >= minAllowedSec) break;
+      if (middleSongs.length >= 12) break;
+    }
+
+    let closePool = regularPool.filter(s => s.closer && !usedIds.has(s.id));
+    if (maxTuningChanges === 0) {
+      closePool = closePool.filter(s => s.tuning === opener.tuning);
+    }
+
+    let closerSong = weightedPick(closePool, usedIds);
+    if (!closerSong) {
+      let fallbackPool = regularPool.filter(s => !usedIds.has(s.id));
+      if (maxTuningChanges === 0) fallbackPool = fallbackPool.filter(s => s.tuning === opener.tuning);
+      closerSong = weightedPick(fallbackPool, usedIds);
+    }
+    if (!closerSong) return null;
+
+    usedIds.add(closerSong.id);
+
+    setSongs = [...setSongs, ...middleSongs, closerSong].filter(Boolean);
+    if (setSongs.length < 4) return null;
+
+    setSongs = orderSetSongs(setSongs, groupTuning, groupGuitars, lockedIndices);
+
+    const finalSongSecs = setSongs.reduce((acc, s) => acc + s.durationSec, 0);
+    const finalBufferSec = Math.max(0, (setSongs.length - 1) * bufferSec);
+    const totalSetSec = finalSongSecs + finalBufferSec;
+
+    if (totalSetSec < minAllowedSec || totalSetSec > maxAllowedSec) {
+      return null;
+    }
+
+    const { tuningChanges, guitarChanges } = countTransitions(setSongs);
+    if (tuningChanges > maxTuningChanges || guitarChanges > maxGuitarChanges) {
+      return null;
+    }
+
+    newSets.push({ title: `Set ${sIdx + 1}`, songs: setSongs });
+  }
+
+  if (encoreCount > 0) {
+    const eIdx = numSets;
+    const encorePool = getActivePool(true);
+    const encoreSongs = [];
+    for (let i = 0; i < encoreCount; i++) {
+      const lockId = lockedSlots[`${eIdx}-${i}`];
+      let pick = lockId ? allSongs.find(x => x.id === lockId) : null;
+      if (!pick) {
+        let encores = encorePool.filter(s => s.encore && !usedIds.has(s.id));
+        pick = weightedPick(encores, usedIds) || weightedPick(encorePool.filter(s => s.closer && !usedIds.has(s.id)), usedIds) || weightedPick(encorePool, usedIds);
+      }
+      if (!pick) return null;
+      encoreSongs.push(pick);
+      usedIds.add(pick.id);
+    }
+    const { tuningChanges, guitarChanges } = countTransitions(encoreSongs);
+    if (tuningChanges > maxTuningChanges || guitarChanges > maxGuitarChanges) {
+      return null;
+    }
+    newSets.push({ title: 'Encore', songs: encoreSongs });
+  }
+
+  return newSets;
+}
+
+function generateSetlist() {
+  const warningBanner = document.getElementById('warningBanner');
+  warningBanner.style.display = 'none';
+
+  const params = {
+    numSets: parseInt(document.getElementById('numSets').value, 10),
+    targetMin: parseInt(document.getElementById('targetMinutes').value, 10) * 60,
+    bufferSec: parseInt(document.getElementById('bufferSeconds').value, 10),
+    encoreCount: parseInt(document.getElementById('encoreCount').value, 10),
+    maxTuningChanges: parseInt(document.getElementById('maxTuningChanges').value, 10),
+    maxGuitarChanges: parseInt(document.getElementById('maxGuitarChanges').value, 10),
+    groupTuning: document.getElementById('groupTuning').checked,
+    groupGuitars: document.getElementById('groupGuitars').checked
+  };
+
+  const pool = getActivePool(false);
+  const requiredSongsCount = (params.numSets * 4) + params.encoreCount;
+  
+  if (pool.length < requiredSongsCount) {
+    warningBanner.style.display = 'block';
+    document.getElementById('warningText').textContent = `Active song pool has only ${pool.length} songs, but your settings require at least ${requiredSongsCount} songs. Include more songs or reduce sets/encore count.`;
+    document.getElementById('setsContainer').innerHTML = '';
+    document.getElementById('gigSummary').innerHTML = `Total: <strong>0 songs</strong> • <strong>0:00</strong>`;
+    return;
+  }
+
+  let validSets = null;
+  for (let attempt = 0; attempt < 300; attempt++) {
+    validSets = attemptBuildSetlist(params);
+    if (validSets) break;
+  }
+
+  if (!validSets) {
+    warningBanner.style.display = 'block';
+    document.getElementById('warningText').textContent = `No Setlist Available: Could not build sets within the strict ±4 minute target length window and transition limits. Try adjusting your target set length or relaxing transition rules.`;
+    document.getElementById('setsContainer').innerHTML = '';
+    document.getElementById('gigSummary').innerHTML = `Total: <strong>0 songs</strong> • <strong>0:00</strong>`;
+    return;
+  }
+
+  currentSets = validSets;
+  renderSets();
+}
+
+function swapSingleSong(setIdx, songIdx) {
+  const isEncore = currentSets[setIdx].title === 'Encore';
+  const pool = getActivePool(isEncore);
+  const usedIds = new Set(currentSets.flatMap(st => st.songs.map(s => s.id)));
+  const isOpener = !isEncore && songIdx === 0;
+  const isCloser = !isEncore && songIdx === currentSets[setIdx].songs.length - 1;
+  const maxTuningChanges = parseInt(document.getElementById('maxTuningChanges').value, 10);
+  const maxGuitarChanges = parseInt(document.getElementById('maxGuitarChanges').value, 10);
+
+  let subPool = pool.filter(s => !usedIds.has(s.id));
+  if (isEncore) subPool = subPool.filter(s => s.encore);
+  else if (isOpener) subPool = subPool.filter(s => s.opener);
+  else if (isCloser) subPool = subPool.filter(s => s.closer);
+
+  if (!isEncore && songIdx <= 2 && currentSets[setIdx].songs.length > 0) {
+    const refSong = songIdx === 0 ? currentSets[setIdx].songs[1] : currentSets[setIdx].songs[0];
+    if (refSong) {
+      subPool = subPool.filter(s => s.tuning === refSong.tuning);
+    }
+  }
+
+  const validCandidates = subPool.filter(cand => {
+    const testSongs = [...currentSets[setIdx].songs];
+    testSongs[songIdx] = cand;
+    const { tuningChanges, guitarChanges } = countTransitions(testSongs);
+    return tuningChanges <= maxTuningChanges && guitarChanges <= maxGuitarChanges;
+  });
+
+  const pick = weightedPick(validCandidates, usedIds) || weightedPick(subPool, usedIds) || weightedPick(pool, usedIds);
+  if (!pick) {
+    alert('No unused songs left matching your current filters and transition limits!');
+    return;
+  }
+  currentSets[setIdx].songs[songIdx] = pick;
+  delete lockedSlots[`${setIdx}-${songIdx}`];
+  renderSets();
+}
+
+function toggleLock(setIdx, songIdx) {
+  const key = `${setIdx}-${songIdx}`;
+  if (lockedSlots[key]) {
+    delete lockedSlots[key];
+  } else {
+    lockedSlots[key] = currentSets[setIdx].songs[songIdx].id;
+  }
+  renderSets();
+}
+
+function handleDragStart(e, setIdx, songIdx) {
+  dragState = { setIdx, songIdx };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', `${setIdx}-${songIdx}`);
+  setTimeout(() => {
+    const el = e.target.closest('.song-item');
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function handleDragOver(e, targetSetIdx, targetSongIdx) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const item = e.currentTarget;
+  const rect = item.getBoundingClientRect();
+  const midY = rect.top + rect.height / 2;
+  item.classList.remove('drag-over-top', 'drag-over-bottom');
+  if (e.clientY < midY) {
+    item.classList.add('drag-over-top');
+  } else {
+    item.classList.add('drag-over-bottom');
+  }
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+}
+
+function handleDrop(e, targetSetIdx, targetSongIdx) {
+  e.preventDefault();
+  const item = e.currentTarget;
+  const rect = item.getBoundingClientRect();
+  const insertAfter = e.clientY >= (rect.top + rect.height / 2);
+  item.classList.remove('drag-over-top', 'drag-over-bottom');
+
+  if (!dragState) return;
+  const { setIdx: srcSetIdx, songIdx: srcSongIdx } = dragState;
+  dragState = null;
+
+  const draggedSong = currentSets[srcSetIdx].songs[srcSongIdx];
+  const isTargetEncore = currentSets[targetSetIdx].title === 'Encore';
+  if (draggedSong.id === BLACK_PARADE_ID && !isTargetEncore) {
+    alert('Welcome to the Black Parade can only be placed in the Encore section!');
+    renderSets();
+    return;
+  }
+
+  const lockedSongIds = new Set(Object.values(lockedSlots));
+
+  const [movedSong] = currentSets[srcSetIdx].songs.splice(srcSongIdx, 1);
+  let destIdx = targetSongIdx;
+  if (srcSetIdx === targetSetIdx && srcSongIdx < targetSongIdx) {
+    destIdx--;
+  }
+  if (insertAfter) {
+    destIdx++;
+  }
+  destIdx = Math.max(0, Math.min(destIdx, currentSets[targetSetIdx].songs.length));
+  currentSets[targetSetIdx].songs.splice(destIdx, 0, movedSong);
+
+  lockedSlots = {};
+  currentSets.forEach((st, sIdx) => {
+    st.songs.forEach((song, idx) => {
+      if (lockedSongIds.has(song.id)) {
+        lockedSlots[`${sIdx}-${idx}`] = song.id;
+      }
+    });
+  });
+
+  renderSets();
+}
+
+function handleDragEnd(e) {
+  dragState = null;
+  document.querySelectorAll('.song-item').forEach(el => {
+    el.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+  });
+}
+
+function openAddSongModal(setIdx) {
+  activeTargetSetIdx = setIdx;
+  document.getElementById('addSongModalTitle').textContent = `Add Song to ${currentSets[setIdx].title}`;
+  document.getElementById('addSongModal').style.display = 'flex';
+  document.getElementById('addSongSearch').value = '';
+  renderAddSongList();
+}
+
+function closeAddSongModal() {
+  document.getElementById('addSongModal').style.display = 'none';
+  activeTargetSetIdx = null;
+}
+
+function renderAddSongList() {
+  const q = document.getElementById('addSongSearch').value.toLowerCase();
+  const list = document.getElementById('addSongList');
+  const usedIds = new Set(currentSets.flatMap(st => st.songs.map(s => s.id)));
+  const isEncore = currentSets[activeTargetSetIdx].title === 'Encore';
+  const pool = getActivePool(isEncore).filter(s => !usedIds.has(s.id));
+
+  const filtered = pool.filter(s =>
+    s.song.toLowerCase().includes(q) ||
+    s.artist.toLowerCase().includes(q) ||
+    s.genre.toLowerCase().includes(q) ||
+    s.tuning.toLowerCase().includes(q) ||
+    `w${s.weight}`.includes(q)
+  );
+
+  if (!filtered.length) {
+    list.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--muted);">No available unused songs found.</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => `
+    <div class="pool-row">
+      <div>
+        <strong>${s.song}</strong> <span style="color:var(--muted)">(${s.artist})</span>
+        <div style="font-size:0.78rem; color:var(--muted)">
+          ${s.genre} • Vocal Diff: ${s.vocalDifficulty}/5 • Weight ${s.weight} • ${s.tuning} • ${s.twoGuitars ? '2 Gtr' : '1 Gtr'}
+        </div>
+      </div>
+      <button class="primary" onclick="addSongToSet(${s.id})">+ Add</button>
+    </div>
+  `).join('');
+}
+
+function addSongToSet(songId) {
+  if (activeTargetSetIdx === null) return;
+  const song = allSongs.find(s => s.id === songId);
+  if (!song) return;
+  currentSets[activeTargetSetIdx].songs.push(song);
+  closeAddSongModal();
+  renderSets();
+}
+
+function formatSec(totalSec) {
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function renderSets() {
+  const container = document.getElementById('setsContainer');
+  container.innerHTML = '';
+  let totalSongs = 0;
+  let totalSec = 0;
+  const bufferSec = parseInt(document.getElementById('bufferSeconds').value, 10);
+
+  currentSets.forEach((setObj, sIdx) => {
+    const songSecs = setObj.songs.reduce((acc, s) => acc + s.durationSec, 0);
+    const setBuffer = Math.max(0, (setObj.songs.length - 1) * bufferSec);
+    const setTotalSec = songSecs + setBuffer;
+    const { tuningChanges, guitarChanges } = countTransitions(setObj.songs);
+    
+    totalSongs += setObj.songs.length;
+    totalSec += setTotalSec;
+
+    const card = document.createElement('div');
+    card.className = 'set-card';
+
+    let itemsHtml = '';
+    setObj.songs.forEach((s, idx) => {
+      const isLocked = Boolean(lockedSlots[`${sIdx}-${idx}`]);
+      const tuningBadge = s.tuning === 'Drop D'
+        ? `<span class="badge b-drop b-tuning">Drop D</span>`
+        : `<span class="badge b-std b-tuning">Standard</span>`;
+
+      let vocalColorClass = '';
+      if (s.vocalDifficulty === 3) vocalColorClass = 'v-yellow';
+      else if (s.vocalDifficulty === 4) vocalColorClass = 'v-orange';
+      else if (s.vocalDifficulty >= 5) vocalColorClass = 'v-red';
+
+      let roleBadge = '';
+      if (setObj.title === 'Encore') roleBadge = `<span class="badge b-role r-enc">Encore</span>`;
+      else if (idx === 0 && s.opener) roleBadge = `<span class="badge b-role r-open">Opener</span>`;
+      else if (idx === setObj.songs.length - 1 && s.closer) roleBadge = `<span class="badge b-role r-close">Closer</span>`;
+
+      if (idx > 0) {
+        const prev = setObj.songs[idx - 1];
+        const tuningChange = prev.tuning !== s.tuning;
+        const guitarChange = prev.twoGuitars !== s.twoGuitars;
+        if (tuningChange || guitarChange) {
+          let transText = [];
+          if (tuningChange) transText.push(`Tuning: ${prev.tuning} ➔ ${s.tuning}`);
+          if (guitarChange) transText.push(s.twoGuitars ? `Guitar Change (2 Guitars)` : `Guitar Change (1 Guitar)`);
+          itemsHtml += `<div class="transition-banner">⚡ ${transText.join(' | ')}</div>`;
+        }
+      }
+
+      itemsHtml += `
+        <li class="song-item ${isLocked ? 'locked' : ''}"
+            draggable="true"
+            ondragstart="handleDragStart(event, ${sIdx}, ${idx})"
+            ondragover="handleDragOver(event, ${sIdx}, ${idx})"
+            ondragleave="handleDragLeave(event)"
+            ondrop="handleDrop(event, ${sIdx}, ${idx})"
+            ondragend="handleDragEnd(event)">
+          <div class="drag-handle" title="Drag to reorder song">⋮⋮</div>
+          <div class="song-main">
+            <div class="song-title-row">
+              <span class="song-num">${idx + 1}.</span>
+              <span class="song-name">${s.song}</span>
+              <span class="song-artist">— ${s.artist}</span>
+            </div>
+            <div class="badges">
+              ${tuningBadge}
+              <span class="badge b-info b-key">Key: ${s.key}</span>
+              <span class="badge b-info b-tempo">${s.bpm} BPM</span>
+              <span class="badge b-info b-genre">${s.genre}</span>
+              <span class="badge b-info b-vocal ${vocalColorClass}">Vocal Diff: ${s.vocalDifficulty}/5</span>
+              <span class="badge b-info b-duration">${s.length}</span>
+              <span class="badge b-info b-guitars">${s.twoGuitars ? '2 Guitars' : '1 Guitar'}</span>
+              ${roleBadge}
+            </div>
+          </div>
+          <div class="song-actions">
+            <button class="icon-btn" title="Lock/Unlock Song" onclick="toggleLock(${sIdx}, ${idx})">${isLocked ? '🔒' : '🔓'}</button>
+            <button class="icon-btn" title="Swap Song" onclick="swapSingleSong(${sIdx}, ${idx})">↻</button>
+          </div>
+        </li>
+      `;
+    });
+
+    card.innerHTML = `
+      <div class="set-header">
+        <span class="set-title">${setObj.title}</span>
+        <span class="set-meta">${setObj.songs.length} songs • ${formatSec(setTotalSec)}<br>${tuningChanges} Tuning / ${guitarChanges} Guitar swaps</span>
+      </div>
+      <ul class="song-list">${itemsHtml}</ul>
+      <div class="add-song-footer">
+        <button class="add-song-btn" onclick="openAddSongModal(${sIdx})">+ Add Song to ${setObj.title}</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  document.getElementById('gigSummary').innerHTML = `Total: <strong>${totalSongs} songs</strong> • <strong>${formatSec(totalSec)}</strong>`;
+  document.getElementById('poolCount').textContent = getActivePool(false).length;
+}
+
+function openPoolModal() {
+  document.getElementById('poolModal').style.display = 'flex';
+  renderPoolList();
+}
+function closePoolModal() {
+  document.getElementById('poolModal').style.display = 'none';
+  document.getElementById('poolCount').textContent = getActivePool(false).length;
+}
+function toggleExclude(id) {
+  if (excludedIds.has(id)) excludedIds.delete(id);
+  else excludedIds.add(id);
+  renderPoolList();
+}
+function renderPoolList() {
+  const q = document.getElementById('poolSearch').value.toLowerCase();
+  const list = document.getElementById('poolList');
+  const filtered = allSongs.filter(s =>
+    s.song.toLowerCase().includes(q) ||
+    s.artist.toLowerCase().includes(q) ||
+    s.genre.toLowerCase().includes(q) ||
+    s.tuning.toLowerCase().includes(q) ||
+    `w${s.weight}`.includes(q) ||
+    `v${s.vocalDifficulty}`.includes(q)
+  );
+  list.innerHTML = filtered.map(s => {
+    const isExcluded = excludedIds.has(s.id);
+    const isBlackParade = s.id === BLACK_PARADE_ID;
+    return `
+      <div class="pool-row">
+        <div>
+          <strong>${s.song}</strong> <span style="color:var(--muted)">(${s.artist})</span>
+          <div style="font-size:0.78rem; color:var(--muted)">
+            ${s.genre} • Vocal Diff: ${s.vocalDifficulty}/5 • Weight ${s.weight} • ${s.tuning} • ${s.twoGuitars ? '2 Gtr' : '1 Gtr'} ${isBlackParade ? ' • <span style="color:var(--accent)">[Encore Only]</span>' : ''}
+          </div>
+        </div>
+        <button onclick="toggleExclude(${s.id})" style="border-color:${isExcluded ? '#ef4444' : '#10b981'}">
+          ${isExcluded ? 'Excluded (Click to Include)' : 'Active'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function exportCSV() {
+  const rows = [['Set', 'Order', 'Song', 'Artist', 'Genre', 'Vocal Difficulty', 'Key', 'BPM', 'Length', 'Tuning', '2 Guitars', 'Weight']];
+  currentSets.forEach(st => {
+    st.songs.forEach((s, idx) => {
+      rows.push([
+        st.title, idx + 1, `"${s.song}"`, `"${s.artist}"`, s.genre, s.vocalDifficulty, s.key, s.bpm, s.length, s.tuning, s.twoGuitars ? 'Y' : 'N', s.weight
+      ]);
+    });
+  });
+  const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csvContent));
+  link.setAttribute("download", "ANTF_Gig_Setlist_2.0.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+document.getElementById('csvUpload').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const lines = evt.target.result.split(/\r?\n/).filter(Boolean);
+    if (lines.length < 2) return;
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const parsed = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+      const get = (name) => {
+        const idx = headers.findIndex(h => h.includes(name));
+        return idx >= 0 ? cols[idx] : '';
+      };
+      const len = get('length') || get('song length') || '3:00';
+      const parts = len.split(':');
+      const sec = parts.length >= 2 ? (parseInt(parts[0],10)*60 + parseInt(parts[1],10)) : 180;
+      parsed.push({
+        id: i,
+        song: get('song'),
+        artist: get('artist'),
+        key: get('key'),
+        bpm: parseInt(get('bpm'), 10) || 120,
+        length: `${Math.floor(sec/60)}:${(sec%60).toString().padStart(2,'0')}`,
+        durationSec: sec,
+        twoGuitars: get('guitar').toUpperCase() === 'Y' || get('2 guitars?').toUpperCase() === 'Y',
+        tuning: get('tuning') || 'Standard',
+        weight: parseInt(get('weight'), 10) || parseInt(get('weighting'), 10) || 2,
+        genre: get('genre') || get('style') || 'Pop Punk',
+        vocalDifficulty: parseInt(get('vocal difficulty'), 10) || 2,
+        opener: get('opener').toUpperCase() === 'Y',
+        closer: get('closer').toUpperCase() === 'Y',
+        encore: get('encore').toUpperCase() === 'Y'
+      });
+    }
+    if (parsed.length) {
+      allSongs = parsed;
+      lockedSlots = {};
+      excludedIds.clear();
+      generateSetlist();
+      alert(`Loaded ${parsed.length} songs from CSV!`);
+    }
+  };
+  reader.readAsText(file);
+});
+
+updateCustomHeader();
+updateDisplayFilters();
+generateSetlist();
+</script>
+</body>
+</html>

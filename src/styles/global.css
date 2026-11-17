@@ -1,0 +1,60 @@
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-hover: #273549;
+  --border: #334155;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-hover: #0284c7;
+  --std-bg: #064e3b;
+  --std-text: #6ee7b7;
+  --drop-bg: #78350f;
+  --drop-text: #fcd34d;
+  --role-open: #1d4ed8;
+  --role-close: #9d174d;
+  --role-enc: #6d28d9;
+  --trans-bg: #451a03;
+  --trans-text: #fde047;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+button, input, select { font: inherit; }
+.native-control { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.native-control:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.native-checkbox { width: 16px; height: 16px; accent-color: var(--accent); }
+.drag-handle { touch-action: none; cursor: grab; user-select: none; }
+.drag-handle:active { cursor: grabbing; }
+.song-row[data-dragging="true"] { opacity: .45; border: 1px dashed var(--accent); }
+.modal-scroll { overscroll-behavior: contain; }
+
+@media (max-width: 767px) {
+  body { padding-bottom: 145px; }
+  .mobile-sticky-actions { position: fixed !important; z-index: 30; left: 0; right: 0; bottom: 0; padding: 10px 12px; background: rgba(15, 23, 42, .96); border-top: 1px solid var(--border); backdrop-filter: blur(10px); }
+}
+
+@media print {
+  @page { size: portrait; margin: .2in; }
+  body { background: #fff !important; color: #000 !important; padding: 0 !important; font-size: 8pt; }
+  .no-print { display: none !important; }
+  .print-header { border-bottom: 1px solid #000 !important; margin-bottom: 4px !important; padding-bottom: 2px !important; }
+  .print-header h1 { color: #000 !important; font-size: 1.05rem !important; }
+  .sets-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 5px !important; }
+  .set-card { background: #fff !important; color: #000 !important; border: 1px solid #000 !important; border-radius: 3px !important; break-inside: avoid; page-break-inside: avoid; }
+  .set-header { background: #f1f5f9 !important; color: #000 !important; border-bottom: 1px solid #000 !important; padding: 2px 5px !important; }
+  .set-title { color: #000 !important; font-size: .78rem !important; }
+  .set-meta { color: #1e293b !important; font-size: .6rem !important; }
+  .set-content { display: block !important; }
+  .song-list { padding: 2px 4px !important; }
+  .song-row { color: #000 !important; background: #fff !important; border-bottom: 1px solid #cbd5e1 !important; padding: 2.5px 4px !important; }
+  .song-name, .song-number { color: #000 !important; font-size: .92rem !important; font-weight: 800 !important; }
+  .song-number { width: 16px !important; }
+  .song-artist { color: #334155 !important; }
+  .transition-banner { background: #fef08a !important; color: #713f12 !important; border: 1px solid #ca8a04 !important; font-size: .55rem !important; padding: 1px 3px !important; margin: 1px 2px !important; }
+  .song-badge { border: 1px solid #64748b !important; background: #f8fafc !important; color: #0f172a !important; font-size: .55rem !important; padding: .5px 3px !important; }
+  .vocal-3 { background: #fef08a !important; color: #713f12 !important; border-color: #ca8a04 !important; }
+  .vocal-4 { background: #ffedd5 !important; color: #c2410c !important; border-color: #ea580c !important; }
+  .vocal-5 { background: #fee2e2 !important; color: #b91c1c !important; border-color: #dc2626 !important; }
+}
