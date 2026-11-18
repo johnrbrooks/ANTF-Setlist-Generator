@@ -10,6 +10,7 @@ import { AddSongModal, SongPoolModal } from './features/song-pool/SongPoolModal'
 import SetCard from './features/setlist/SetCard'
 import useScrollActivity from './hooks/useScrollActivity'
 import { downloadSetlistCsv } from './services/export/csvExport'
+import { buildPrintPages } from './services/export/printLayout'
 import { CsvSongRepository } from './services/song-data/csvRepository'
 import { PublicGoogleSheetsSongRepository } from './services/song-data/publicGoogleSheetsRepository'
 import { generateSetlist, getActivePool, selectSwapSong } from './services/setlist/generator'
@@ -43,6 +44,7 @@ export default function App() {
   const activeRegularPool = useMemo(() => getActivePool(state.songs, state.settings, state.excludedIds, false), [state.songs, state.settings, state.excludedIds])
   const gigMetrics = useMemo(() => calculateGigMetrics(state.sets, state.settings.bufferSeconds), [state.sets, state.settings.bufferSeconds])
   const usedIds = useMemo(() => new Set(state.sets.flatMap((set) => set.songs.map((song) => song.id))), [state.sets])
+  const printPages = useMemo(() => buildPrintPages(state.sets, state.display), [state.sets, state.display])
 
   const runGeneration = (songs = state.songs, lockedSlots = state.lockedSlots) => {
     if (!songs.length) {
@@ -149,7 +151,10 @@ export default function App() {
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <Grid className="sets-grid" gridTemplateColumns={{ base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' }} gap="4.5">
-            {state.sets.map((set, setIndex) => <SetCard key={set.id} set={set} setIndex={setIndex} regularSetCount={state.sets.filter((item) => item.title !== 'Encore').length} settings={state.settings} display={state.display} lockedSlots={state.lockedSlots} onLock={(songIndex) => dispatch({ type: 'TOGGLE_LOCK', setIndex, songIndex })} onSwap={(songIndex) => swapSong(setIndex, songIndex)} onAdd={() => setAddTarget(setIndex)} onMoveSet={(toIndex) => dispatch({ type: 'MOVE_SET', fromIndex: setIndex, toIndex })} />)}
+            {printPages.map((page) => <Box key={page.id} className={`print-page print-${page.density}`} data-set-count={page.items.length} data-effective-row-height={page.effectiveRowHeight}>
+              <Box className="print-page-title">{state.title.trim() || 'ANTF Setlist Generator 3.0'}</Box>
+              {page.items.map(({ set, setIndex }) => <SetCard key={set.id} set={set} setIndex={setIndex} regularSetCount={state.sets.filter((item) => item.title !== 'Encore').length} settings={state.settings} display={state.display} lockedSlots={state.lockedSlots} onLock={(songIndex) => dispatch({ type: 'TOGGLE_LOCK', setIndex, songIndex })} onSwap={(songIndex) => swapSong(setIndex, songIndex)} onAdd={() => setAddTarget(setIndex)} onMoveSet={(toIndex) => dispatch({ type: 'MOVE_SET', fromIndex: setIndex, toIndex })} />)}
+            </Box>)}
           </Grid>
         </DndContext>
         {!state.sets.length && !state.generationError && <Box py="16" textAlign="center" color="var(--muted)"><Text fontSize="4xl">🎸</Text><Text mt="2" fontWeight="800">Load the public band Sheet or a CSV to build a setlist.</Text></Box>}
