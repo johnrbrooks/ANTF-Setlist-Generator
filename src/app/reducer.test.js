@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { appReducer, initialState } from './reducer'
+import { appReducer, initialState, moveSongInSets } from './reducer'
 
 const song = (id, encoreOnly = false, weight = 1) => ({ id, song: id, encoreOnly, weight })
 
 describe('app reducer', () => {
+  it('moves songs consistently in both directions within a set', () => {
+    const sets = [{ id: 'set-1', title: 'Set 1', songs: [song('a'), song('b'), song('c'), song('d')] }]
+    const downward = moveSongInSets(sets, { fromSet: 0, fromIndex: 0, toSet: 0, toIndex: 3 })
+    const upward = moveSongInSets(sets, { fromSet: 0, fromIndex: 3, toSet: 0, toIndex: 1 })
+    const adjacentDownward = moveSongInSets(sets, { fromSet: 0, fromIndex: 1, toSet: 0, toIndex: 2 })
+    expect(downward[0].songs.map((item) => item.id)).toEqual(['b', 'c', 'd', 'a'])
+    expect(upward[0].songs.map((item) => item.id)).toEqual(['a', 'd', 'b', 'c'])
+    expect(adjacentDownward[0].songs.map((item) => item.id)).toEqual(['a', 'c', 'b', 'd'])
+  })
+
   it('remaps locks when songs move between sets', () => {
     const state = { ...initialState, sets: [{ id: 'set-1', title: 'Set 1', songs: [song('a'), song('b')] }, { id: 'set-2', title: 'Set 2', songs: [song('c')] }], lockedSlots: { '0-1': 'b' } }
     const next = appReducer(state, { type: 'MOVE_SONG', fromSet: 0, fromIndex: 1, toSet: 1, toIndex: 0 })

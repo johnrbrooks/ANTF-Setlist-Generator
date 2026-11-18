@@ -34,9 +34,7 @@ function updateSetSong(state, setIndex, songIndex, song) {
 export function moveSongInSets(sourceSets, { fromSet, fromIndex, toSet, toIndex }) {
   const sets = sourceSets.map((set) => ({ ...set, songs: [...set.songs] }))
   const [moved] = sets[fromSet].songs.splice(fromIndex, 1)
-  let targetIndex = toIndex
-  if (fromSet === toSet && fromIndex < toIndex) targetIndex -= 1
-  targetIndex = Math.max(0, Math.min(targetIndex, sets[toSet].songs.length))
+  const targetIndex = Math.max(0, Math.min(toIndex, sets[toSet].songs.length))
   sets[toSet].songs.splice(targetIndex, 0, moved)
   return sets
 }

@@ -85,12 +85,31 @@ test('reports generation quality and supports controlled song replacement', asyn
   await expect(page.locator('.generation-feedback:visible')).toContainText(/Compared \d+ valid arrangement/, { timeout: 15_000 })
   await expect(page.getByLabel('Show Bass Tuning', { exact: true })).toBeChecked()
 
-  const firstSongName = page.locator('.song-name').first()
-  const originalSong = await firstSongName.textContent()
-  await page.getByRole('button', { name: /Automatically replace .* with best match/ }).first().click()
-  await expect(firstSongName).not.toHaveText(originalSong)
+  const targetSongIndex = 4
+  const targetSongName = page.locator('.song-name').nth(targetSongIndex)
+  const originalSong = await targetSongName.textContent()
+  const mobileActions = page.getByRole('button', { name: /More actions for/ }).nth(targetSongIndex)
+  if (await mobileActions.isVisible()) {
+    const targetRow = page.locator('.song-row').nth(targetSongIndex)
+    await expect(targetRow.getByRole('button', { name: /Automatically replace/ })).toBeHidden()
+    await expect(targetRow.getByRole('button', { name: /^Replace / })).toBeHidden()
+    await mobileActions.click()
+    const actionsDialog = page.getByRole('dialog', { name: /Actions for/ })
+    await expect(actionsDialog).toBeVisible()
+    await actionsDialog.getByRole('button', { name: /Best Match/ }).click()
+  } else {
+    await page.getByRole('button', { name: /Automatically replace .* with best match/ }).nth(targetSongIndex).click()
+  }
+  await expect(targetSongName).not.toHaveText(originalSong)
 
-  await page.getByRole('button', { name: /Replace / }).first().click()
+  if (await mobileActions.isVisible()) {
+    await mobileActions.click()
+    await page.getByRole('dialog', { name: /Actions for/ }).getByRole('button', { name: /Choose Replacement/ }).click()
+    const clippedNames = await page.locator('.song-name').evaluateAll((names) => names.filter((name) => name.scrollWidth > name.clientWidth + 1).map((name) => name.textContent))
+    expect(clippedNames).toEqual([])
+  } else {
+    await page.getByRole('button', { name: /Replace / }).nth(targetSongIndex).click()
+  }
   const dialog = page.getByRole('dialog', { name: /Replace Song/ })
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText(/preserve the active pool/)).toBeVisible()
