@@ -10,9 +10,11 @@ const validRow = {
   'Song Length': '3:00',
   '2 Guitars?': 'Y',
   Tuning: 'Standard',
+  'Bass Tuning': '',
   Weighting: '1',
   Style: 'Emo Classic',
   'Vocal Difficulty': '1',
+  'Energy Rating': '4',
   Opener: '',
   Closer: '',
   Encore: '',
@@ -23,7 +25,7 @@ describe('song normalization', () => {
   it('normalizes the external contract', () => {
     const result = normalizeRows([validRow])
     expect(result.issues).toEqual([])
-    expect(result.songs[0]).toMatchObject({ song: 'Dance, Dance', durationSec: 180, twoGuitars: true })
+    expect(result.songs[0]).toMatchObject({ song: 'Dance, Dance', durationSec: 180, twoGuitars: true, bassTuning: '', energyRating: 4 })
   })
 
   it('marks encore-only songs as encore candidates', () => {
@@ -42,5 +44,15 @@ describe('song normalization', () => {
     expect(rowsFromValues([['Song', 'Artist'], ['Test', 'Band']])).toEqual([{ Song: 'Test', Artist: 'Band' }])
     expect(parseDuration('4:09')).toBe(249)
     expect(parseDuration('4:99')).toBeNull()
+  })
+
+  it('defaults missing or invalid energy in one aggregated warning', () => {
+    const result = normalizeRows([
+      { ...validRow, 'Song ID': 'missing-energy', 'Energy Rating': '' },
+      { ...validRow, 'Song ID': 'bad-energy', 'Energy Rating': '9' },
+    ])
+    expect(result.songs.map((song) => song.energyRating)).toEqual([3, 3])
+    expect(result.issues).toHaveLength(1)
+    expect(result.issues[0].message).toContain('2 songs')
   })
 })

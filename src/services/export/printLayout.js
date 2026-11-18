@@ -1,4 +1,4 @@
-const PRINT_BADGE_FILTER_KEYS = ['genre', 'vocal', 'duration', 'guitars', 'tuning', 'tempo', 'key']
+const PRINT_BADGE_FILTER_KEYS = ['genre', 'vocal', 'duration', 'guitars', 'tuning', 'bassTuning', 'tempo', 'key']
 const PRINT_SONG_AREA_POINTS = 700
 const PRINT_TRANSITION_ROW_POINTS = 9
 const PRINT_BADGES_PER_LINE = 4
@@ -9,7 +9,8 @@ export const PRINT_ROW_HEIGHT_BREAKPOINTS = Object.freeze([
   { density: 'roomy', minEffectiveRowHeight: 44 },
   { density: 'standard', minEffectiveRowHeight: 36 },
   { density: 'compact', minEffectiveRowHeight: 29 },
-  { density: 'dense', minEffectiveRowHeight: 0 },
+  { density: 'dense', minEffectiveRowHeight: 14 },
+  { density: 'ultra', minEffectiveRowHeight: 0 },
 ])
 
 export function groupSetsForPrint(sets) {
@@ -22,7 +23,9 @@ export function groupSetsForPrint(sets) {
 export function countPrintTransitionRows(songs) {
   let rows = 0
   for (let index = 1; index < songs.length; index += 1) {
-    if (songs[index].tuning !== songs[index - 1].tuning || songs[index].twoGuitars !== songs[index - 1].twoGuitars) rows += 1
+    const previousBassTuning = songs[index - 1].bassTuning || songs[index - 1].tuning
+    const bassTuning = songs[index].bassTuning || songs[index].tuning
+    if (songs[index].tuning !== songs[index - 1].tuning || bassTuning !== previousBassTuning || songs[index].twoGuitars !== songs[index - 1].twoGuitars) rows += 1
   }
   return rows
 }

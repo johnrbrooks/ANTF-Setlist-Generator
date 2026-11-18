@@ -1,4 +1,4 @@
-import { MAX_GENERATION_ATTEMPTS, SET_TOLERANCE_SECONDS, WEIGHT_MULTIPLIER } from '../../domain/constants'
+import { MAX_GENERATION_ATTEMPTS, MAX_VALID_CANDIDATES, SET_TOLERANCE_SECONDS, WEIGHT_MULTIPLIER } from '../../domain/constants'
 import { calculateSetMetrics, countTransitions } from './metrics'
 
 export function weightedPick(pool, usedIds = new Set(), rng = Math.random) {
@@ -26,8 +26,19 @@ export function getActivePool(songs, settings, excludedIds, isEncore = false) {
 export function calculateOrderCost(songs, settings) {
   const transitions = countTransitions(songs)
   let vocalFatigue = 0
+  let energyFlow = 0
+  let tempoFlow = 0
   for (let index = 1; index < songs.length; index += 1) {
     if (songs[index].vocalDifficulty >= 4 && songs[index - 1].vocalDifficulty >= 4) vocalFatigue += 1
+    const previousEnergy = Number(songs[index - 1].energyRating) || 3
+    const energy = Number(songs[index].energyRating) || 3
+    const energyGap = Math.abs(previousEnergy - energy)
+    energyFlow += energyGap * 0.7
+    if (energyGap === 0) energyFlow += 0.35
+
+    const previousBpm = Number(songs[index - 1].bpm) || 0
+    const bpm = Number(songs[index].bpm) || 0
+    if (previousBpm > 0 && bpm > 0) tempoFlow += Math.min(4, Math.abs(previousBpm - bpm) / 35)
   }
   let genreGrouping = 0
   if (settings.groupGenre && songs.length) {
@@ -46,6 +57,18 @@ export function calculateOrderCost(songs, settings) {
     + transitions.guitarChanges * (settings.groupGuitars ? 5 : 1)
     + vocalFatigue * 10
     + genreGrouping
+    + energyFlow
+    + tempoFlow
+}
+
+export function calculateCompleteSetlistCost(sets, settings) {
+  const targetSeconds = settings.targetMinutes * 60
+  return sets.reduce((total, set) => {
+    const durationCost = set.title === 'Encore'
+      ? 0
+      : Math.abs(calculateSetMetrics(set.songs, settings.bufferSeconds).totalSeconds - targetSeconds) / 60 * 2
+    return total + durationCost + calculateOrderCost(set.songs, settings)
+  }, 0)
 }
 
 function orderSetSongs(songs, groupTuning, groupGuitars, groupGenre, fixedIndices = new Set()) {
@@ -134,16 +157,27 @@ function rolePreferredCandidates(candidates, set, songIndex) {
   return candidates
 }
 
-export function selectSwapSong({ sets, setIndex, songIndex, songs, settings, excludedIds = [], rng = Math.random }) {
+export function getReplacementCandidates({ sets, setIndex, songIndex, songs, settings, excludedIds = [], override = false }) {
   const set = sets[setIndex]
   const current = set?.songs[songIndex]
-  if (!set || !current) return { ok: false, error: 'The selected setlist slot no longer exists.' }
+  if (!set || !current) return []
 
   const isEncore = set.title === 'Encore'
   const usedIds = new Set(sets.flatMap((item) => item.songs.map((song) => song.id)))
   usedIds.delete(current.id)
-  let candidates = getActivePool(songs, settings, excludedIds, isEncore)
-    .filter((song) => song.id !== current.id && !usedIds.has(song.id))
+  let candidates = (override ? songs : getActivePool(songs, settings, excludedIds, isEncore))
+    .filter((song) => song.id !== current.id && !usedIds.has(song.id) && (isEncore || !song.encoreOnly))
+
+  if (override) {
+    return candidates
+      .map((song) => {
+        const testSongs = set.songs.map((item, index) => index === songIndex ? song : item)
+        return { song, cost: calculateOrderCost(testSongs, settings) }
+      })
+      .sort((a, b) => a.cost - b.cost || a.song.song.localeCompare(b.song.song))
+  }
+
+  candidates = candidates
     .filter((song) => {
       const testSongs = set.songs.map((item, index) => index === songIndex ? song : item)
       const metrics = calculateSetMetrics(testSongs, settings.bufferSeconds)
@@ -155,14 +189,27 @@ export function selectSwapSong({ sets, setIndex, songIndex, songs, settings, exc
     })
 
   candidates = rolePreferredCandidates(candidates, set, songIndex)
+  return candidates
+    .map((song) => {
+      const testSongs = set.songs.map((item, index) => index === songIndex ? song : item)
+      return { song, cost: calculateOrderCost(testSongs, settings) }
+    })
+    .sort((a, b) => a.cost - b.cost || a.song.song.localeCompare(b.song.song))
+}
+
+export function selectSwapSong({ sets, setIndex, songIndex, songs, settings, excludedIds = [], rng = Math.random }) {
+  const set = sets[setIndex]
+  const current = set?.songs[songIndex]
+  if (!set || !current) return { ok: false, error: 'The selected setlist slot no longer exists.' }
+
+  const scored = getReplacementCandidates({ sets, setIndex, songIndex, songs, settings, excludedIds })
+  const usedIds = new Set(sets.flatMap((item) => item.songs.map((song) => song.id)))
+  usedIds.delete(current.id)
+  const candidates = scored.map((entry) => entry.song)
   if (!candidates.length) {
     return { ok: false, error: 'No unused song can replace this slot while preserving duration, Weight 1 opening slots, and the selected transition limits.' }
   }
 
-  const scored = candidates.map((song) => {
-    const testSongs = set.songs.map((item, index) => index === songIndex ? song : item)
-    return { song, cost: calculateOrderCost(testSongs, settings) }
-  })
   const bestCost = Math.min(...scored.map((entry) => entry.cost))
   const best = scored.filter((entry) => entry.cost === bestCost).map((entry) => entry.song)
   return { ok: true, song: weightedPick(best, usedIds, rng) }
@@ -238,7 +285,6 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
 
     let currentSeconds = calculateSetMetrics(setSongs, settings.bufferSeconds).totalSeconds
     const highestLockIndex = locks.reduce((highest, lock) => Math.max(highest, lock.index), -1)
-    let middleCount = 0
     while (currentSeconds < minSeconds || setSongs.length < highestLockIndex) {
       let pool = regularPool.filter((song) => !usedIds.has(song.id))
       const nonRoleSongs = pool.filter((song) => !song.opener && !song.closer)
@@ -263,9 +309,7 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
       setSongs.push(pick)
       usedIds.add(pick.id)
       currentSeconds += settings.bufferSeconds + pick.durationSec
-      middleCount += 1
       if (currentSeconds >= minSeconds && setSongs.length >= highestLockIndex) break
-      if (middleCount >= 12) break
     }
 
     let closerPool = regularPool.filter((song) => song.closer && !usedIds.has(song.id))
@@ -310,7 +354,7 @@ function attemptBuild({ songs, settings, excludedIds, lockedSlots, rng }) {
   return sets
 }
 
-export function generateSetlist({ songs, settings, excludedIds = [], lockedSlots = {}, rng = Math.random }) {
+export function generateSetlist({ songs, settings, excludedIds = [], lockedSlots = {}, rng = Math.random, maxValidCandidates = MAX_VALID_CANDIDATES }) {
   const regularPool = getActivePool(songs, settings, excludedIds, false)
   const encorePool = getActivePool(songs, settings, excludedIds, true)
   const minimumRegular = settings.numSets * 4
@@ -345,9 +389,33 @@ export function generateSetlist({ songs, settings, excludedIds = [], lockedSlots
     }
   }
 
+  let bestSets = null
+  let bestCost = Infinity
+  let validCandidateCount = 0
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const sets = attemptBuild({ songs, settings, excludedIds, lockedSlots, rng })
-    if (sets) return { ok: true, sets }
+    if (!sets) continue
+    validCandidateCount += 1
+    const cost = calculateCompleteSetlistCost(sets, settings)
+    if (cost < bestCost) {
+      bestCost = cost
+      bestSets = sets
+    }
+    if (validCandidateCount >= maxValidCandidates) break
+  }
+  if (bestSets) {
+    return {
+      ok: true,
+      sets: bestSets,
+      diagnostics: {
+        validCandidateCount,
+        score: Math.round(bestCost * 100) / 100,
+        averageEnergyBySet: bestSets.map((set) => ({
+          title: set.title,
+          average: Math.round(set.songs.reduce((total, song) => total + (Number(song.energyRating) || 3), 0) / set.songs.length * 10) / 10,
+        })),
+      },
+    }
   }
   return {
     ok: false,

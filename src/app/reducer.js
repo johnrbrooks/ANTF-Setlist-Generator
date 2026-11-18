@@ -13,6 +13,7 @@ export const initialState = {
   lockedSlots: {},
   sets: [],
   generationError: '',
+  generationDiagnostics: null,
 }
 
 function rebuildLocks(sets, lockedIds) {
@@ -27,7 +28,7 @@ function updateSetSong(state, setIndex, songIndex, song) {
   const sets = state.sets.map((set, index) => index === setIndex ? { ...set, songs: set.songs.map((item, itemIndex) => itemIndex === songIndex ? song : item) } : set)
   const lockedSlots = { ...state.lockedSlots }
   delete lockedSlots[`${setIndex}-${songIndex}`]
-  return { ...state, sets, lockedSlots }
+  return { ...state, sets, lockedSlots, generationDiagnostics: null }
 }
 
 export function moveSongInSets(sourceSets, { fromSet, fromIndex, toSet, toIndex }) {
@@ -69,8 +70,8 @@ export function appReducer(state, action) {
         generationError: '',
       }
     }
-    case 'GENERATION_SUCCESS': return { ...state, sets: action.sets, generationError: '', sourceChanged: false }
-    case 'GENERATION_ERROR': return { ...state, generationError: action.error, sets: action.clear ? [] : state.sets }
+    case 'GENERATION_SUCCESS': return { ...state, sets: action.sets, generationDiagnostics: action.diagnostics ?? null, generationError: '', sourceChanged: false }
+    case 'GENERATION_ERROR': return { ...state, generationError: action.error, generationDiagnostics: action.clear ? null : state.generationDiagnostics, sets: action.clear ? [] : state.sets }
     case 'TOGGLE_EXCLUDE': {
       const excludedIds = new Set(state.excludedIds)
       if (excludedIds.has(action.id)) excludedIds.delete(action.id)
@@ -84,16 +85,17 @@ export function appReducer(state, action) {
       else lockedSlots[key] = state.sets[action.setIndex].songs[action.songIndex].id
       return { ...state, lockedSlots }
     }
+    case 'CLEAR_LOCKS': return { ...state, lockedSlots: {} }
     case 'REPLACE_SONG': return updateSetSong(state, action.setIndex, action.songIndex, action.song)
     case 'ADD_SONG': {
       const sets = state.sets.map((set, index) => index === action.setIndex ? { ...set, songs: [...set.songs, action.song] } : set)
-      return { ...state, sets }
+      return { ...state, sets, generationDiagnostics: null }
     }
     case 'MOVE_SONG': {
       const lockedIds = new Set(Object.values(state.lockedSlots))
       const sets = moveSongInSets(state.sets, action)
       if (!regularStartsUseWeightOne(sets)) return state
-      return { ...state, sets, lockedSlots: rebuildLocks(sets, lockedIds) }
+      return { ...state, sets, lockedSlots: rebuildLocks(sets, lockedIds), generationDiagnostics: null }
     }
     case 'MOVE_SET': {
       const regularSets = state.sets.filter((set) => set.title !== 'Encore')
@@ -104,7 +106,7 @@ export function appReducer(state, action) {
       regularSets.splice(action.toIndex, 0, moved)
       const relabeled = regularSets.map((set, index) => ({ ...set, title: `Set ${index + 1}` }))
       const sets = encore ? [...relabeled, encore] : relabeled
-      return { ...state, sets, lockedSlots: rebuildLocks(sets, lockedIds) }
+      return { ...state, sets, lockedSlots: rebuildLocks(sets, lockedIds), generationDiagnostics: null }
     }
     default: return state
   }

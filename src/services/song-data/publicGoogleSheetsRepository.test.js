@@ -12,7 +12,7 @@ describe('public Google Sheets repository', () => {
     expect(endpoint.pathname).toBe('/spreadsheets/d/sheet-123/gviz/tq')
     expect(endpoint.searchParams.get('tqx')).toBe('out:csv')
     expect(endpoint.searchParams.get('gid')).toBe('456')
-    expect(endpoint.searchParams.get('range')).toBe('A:O')
+    expect(endpoint.searchParams.get('range')).toBe('A:Q')
   })
 
   it('loads and normalizes public CSV data', async () => {

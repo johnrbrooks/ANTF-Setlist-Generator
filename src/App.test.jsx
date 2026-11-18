@@ -21,12 +21,12 @@ describe('App', () => {
     const targetLength = screen.getByLabelText(/Target Set Length/)
 
     await user.clear(targetLength)
-    await user.type(targetLength, '61')
-    expect(screen.getByRole('alert')).toHaveTextContent('20–60 whole minutes')
+    await user.type(targetLength, '91')
+    expect(screen.getByRole('alert')).toHaveTextContent('20–90 whole minutes')
     await waitFor(() => expect(screen.getByRole('button', { name: /Generate Setlist/ })).toBeDisabled())
 
     await user.clear(targetLength)
-    await user.type(targetLength, '50')
+    await user.type(targetLength, '90')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: /Generate Setlist/ })).toBeEnabled())
   })

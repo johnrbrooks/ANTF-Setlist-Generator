@@ -1,17 +1,18 @@
 export const COLORS = {
-  bg: '#0f172a',
-  surface: '#1e293b',
-  surfaceHover: '#273549',
-  border: '#334155',
-  text: '#f8fafc',
-  muted: '#94a3b8',
-  accent: '#38bdf8',
-  accentHover: '#0284c7',
+  bg: '#070607',
+  surface: '#141116',
+  surfaceHover: '#241a29',
+  border: '#43234f',
+  text: '#ffffff',
+  muted: '#c9b8ce',
+  accent: '#b36bd5',
+  accentHover: '#8e45b0',
 }
 
 export const WEIGHT_MULTIPLIER = Object.freeze({ 1: 14, 2: 7, 3: 2.5, 4: 0.7 })
 export const SET_TOLERANCE_SECONDS = 240
 export const MAX_GENERATION_ATTEMPTS = 300
+export const MAX_VALID_CANDIDATES = 24
 
 export const DEFAULT_SETTINGS = Object.freeze({
   numSets: 4,
@@ -33,6 +34,7 @@ export const DEFAULT_DISPLAY = Object.freeze({
   duration: false,
   guitars: false,
   tuning: false,
+  bassTuning: true,
   tempo: false,
   key: false,
 })

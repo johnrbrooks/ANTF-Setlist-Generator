@@ -1,6 +1,6 @@
 import Papa from 'papaparse'
 
-export const EXPORT_HEADERS = ['Set', 'Order', 'Song', 'Artist', 'Genre', 'Vocal Difficulty', 'Key', 'BPM', 'Length', 'Tuning', '2 Guitars', 'Weight']
+export const EXPORT_HEADERS = ['Set', 'Order', 'Song', 'Artist', 'Genre', 'Vocal Difficulty', 'Energy Rating', 'Key', 'BPM', 'Length', 'Guitar Tuning', 'Bass Tuning', '2 Guitars', 'Weight']
 
 export function createSetlistCsv(sets) {
   const rows = sets.flatMap((set) => set.songs.map((song, index) => ({
@@ -10,10 +10,12 @@ export function createSetlistCsv(sets) {
     Artist: song.artist,
     Genre: song.genre,
     'Vocal Difficulty': song.vocalDifficulty,
+    'Energy Rating': song.energyRating,
     Key: song.key,
     BPM: song.bpm,
     Length: song.length,
-    Tuning: song.tuning,
+    'Guitar Tuning': song.tuning,
+    'Bass Tuning': song.bassTuning || '',
     '2 Guitars': song.twoGuitars ? 'Y' : 'N',
     Weight: song.weight,
   })))

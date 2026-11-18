@@ -1,7 +1,7 @@
 export const NUMERIC_SETTING_RULES = Object.freeze({
-  numSets: { label: 'Number of sets', allowed: [3, 4], message: 'Use 3 or 4.' },
-  targetMinutes: { label: 'Target set length', min: 20, max: 60, message: 'Use 20–60 whole minutes.' },
-  bufferSeconds: { label: 'Song buffer', allowed: [15, 20, 25, 30], message: 'Use 15, 20, 25, or 30 seconds.' },
+  numSets: { label: 'Number of sets', min: 1, max: 4, message: 'Use a whole number from 1–4.' },
+  targetMinutes: { label: 'Target set length', min: 20, max: 90, message: 'Use 20–90 whole minutes.' },
+  bufferSeconds: { label: 'Song buffer', min: 1, max: 60, message: 'Use a whole number from 1–60 seconds.' },
   encoreCount: { label: 'Encore songs', min: 0, max: 3, message: 'Use a whole number from 0–3.' },
 })
 

@@ -111,16 +111,16 @@ export default function SettingsPanel({ settings, display, title, dispatch, onVa
   }
 
   return (
-    <Box bg={{ base: 'transparent', md: 'var(--surface)' }} border={{ base: '0', md: '1px solid var(--border)' }} borderRadius={{ base: '0', md: '12px' }} mb="5" className="no-print">
+    <Box bg={{ base: 'transparent', md: 'var(--surface)' }} border={{ base: '0', md: '1px solid var(--border)' }} borderRadius={{ base: '0', md: '12px' }} mb="5" className="settings-panel no-print">
       <Flex className="settings-toggle" as="button" type="button" display={{ base: 'none', md: 'flex' }} w="100%" justify="space-between" align="center" cursor="pointer" px="4" py="3" color="var(--accent)" fontWeight="800" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>Gig Settings &amp; Stage Sheet Display <Text as="span" color="var(--text)">{expanded ? '▾' : '▸'}</Text></Flex>
-      <Grid display={{ base: 'block', md: expanded ? 'grid' : 'none' }} px={{ base: '0', md: '4' }} pb={{ base: '0', md: '4' }} gridTemplateColumns={{ md: 'repeat(5, minmax(0, 1fr))' }} gap={{ base: '0', md: '3.5' }} alignItems="start">
+      <Grid display={{ base: 'block', md: expanded ? 'grid' : 'none' }} px={{ base: '0', md: '4' }} pt={{ base: '0', md: '2' }} pb={{ base: '0', md: '4' }} gridTemplateColumns={{ md: 'repeat(5, minmax(0, 1fr))' }} gap={{ base: '0', md: '3.5' }} alignItems="start">
         <ResponsiveSection id="mobile-configuration" title="Configuration" expanded={mobileSections.configuration} onToggle={() => toggleMobileSection('configuration')}>
           <Field id="setting-title" label="Gig / Stage Header Title" span={2}>
             <input id="setting-title" className="native-control" value={title} maxLength={100} onChange={(event) => dispatch({ type: 'SET_TITLE', value: event.target.value })} placeholder="e.g. ANTF Lighthorse 12-16-26" />
           </Field>
-          <ValidatedNumberField name="numSets" label="Number of Sets (3–4)" value={settings.numSets} onChange={(value) => setting('numSets', value)} onValidityChange={reportValidity} />
-          <ValidatedNumberField name="targetMinutes" label="Target Set Length (20–60 Min)" value={settings.targetMinutes} onChange={(value) => setting('targetMinutes', value)} onValidityChange={reportValidity} />
-          <ValidatedNumberField name="bufferSeconds" label="Song Buffer (15 / 20 / 25 / 30 Sec)" value={settings.bufferSeconds} onChange={(value) => setting('bufferSeconds', value)} onValidityChange={reportValidity} />
+          <ValidatedNumberField name="numSets" label="Number of Sets (1–4)" value={settings.numSets} onChange={(value) => setting('numSets', value)} onValidityChange={reportValidity} />
+          <ValidatedNumberField name="targetMinutes" label="Target Set Length (20–90 Min)" value={settings.targetMinutes} onChange={(value) => setting('targetMinutes', value)} onValidityChange={reportValidity} />
+          <ValidatedNumberField name="bufferSeconds" label="Song Buffer (1–60 Sec)" value={settings.bufferSeconds} onChange={(value) => setting('bufferSeconds', value)} onValidityChange={reportValidity} />
           <ValidatedNumberField name="encoreCount" label="Encore Songs (0–3)" value={settings.encoreCount} onChange={(value) => setting('encoreCount', value)} onValidityChange={reportValidity} />
           <Field id="setting-max-tuning" label="Max Tuning Changes / Set"><select id="setting-max-tuning" className="native-control" value={settings.maxTuningChanges} onChange={(e) => setting('maxTuningChanges', Number(e.target.value))}><option value="99">No Limit</option><option value="3">Max 3</option><option value="2">Max 2</option><option value="1">Max 1</option><option value="0">0 (Single Tuning)</option></select></Field>
           <Field id="setting-max-guitar" label="Max Guitar Changes / Set"><select id="setting-max-guitar" className="native-control" value={settings.maxGuitarChanges} onChange={(e) => setting('maxGuitarChanges', Number(e.target.value))}><option value="99">No Limit</option><option value="4">Max 4</option><option value="3">Max 3</option><option value="2">Max 2</option><option value="1">Max 1</option><option value="0">0 (No Setup Change)</option></select></Field>
@@ -137,10 +137,10 @@ export default function SettingsPanel({ settings, display, title, dispatch, onVa
         </ResponsiveSection>
 
         <ResponsiveSection id="mobile-stage-filters" title="Stage Sheet Filters" expanded={mobileSections.filters} onToggle={() => toggleMobileSection('filters')}>
-          <Box gridColumn={{ base: '1', md: '1 / -1' }} bg={{ base: 'transparent', md: 'rgba(15,23,42,.4)' }} border={{ base: '0', md: '1px solid var(--border)' }} borderRadius={{ base: '0', md: '8px' }} p={{ base: '0', md: '3' }}>
+          <Box gridColumn={{ base: '1', md: '1 / -1' }} bg={{ base: 'transparent', md: 'rgba(42,27,49,.32)' }} border={{ base: '0', md: '1px solid var(--border)' }} borderRadius={{ base: '0', md: '8px' }} p={{ base: '0', md: '3' }}>
             <Text {...labelStyle} display={{ base: 'none', md: 'block' }} color="var(--accent)" mb="1">Stage Sheet Display Filters</Text>
             <Grid gridTemplateColumns={{ base: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }} columnGap="4" rowGap="0">
-              {[['artist','Artist Name'],['genre','Genre'],['vocal','Vocal Diff'],['duration','Duration'],['guitars','Guitar Count'],['tuning','Tuning'],['tempo','Tempo (BPM)'],['key','Key']].map(([name, label]) => <Check key={name} checked={display[name]} onChange={(v) => filter(name, v)}>Show {label}</Check>)}
+              {[['artist','Artist Name'],['genre','Genre'],['vocal','Vocal Diff'],['duration','Duration'],['guitars','Guitar Count'],['tuning','Guitar Tuning'],['bassTuning','Bass Tuning'],['tempo','Tempo (BPM)'],['key','Key']].map(([name, label]) => <Check key={name} checked={display[name]} onChange={(v) => filter(name, v)}>Show {label}</Check>)}
             </Grid>
           </Box>
         </ResponsiveSection>

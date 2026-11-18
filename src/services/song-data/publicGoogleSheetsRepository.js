@@ -8,7 +8,7 @@ export class PublicGoogleSheetsError extends Error {
   }
 }
 
-export function buildPublicSheetCsvUrl(sheetUrl, range = 'A:O') {
+export function buildPublicSheetCsvUrl(sheetUrl, range = 'A:Q') {
   let parsed
   try {
     parsed = new URL(sheetUrl)
@@ -24,12 +24,12 @@ export function buildPublicSheetCsvUrl(sheetUrl, range = 'A:O') {
   const endpoint = new URL(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/gviz/tq`)
   endpoint.searchParams.set('tqx', 'out:csv')
   endpoint.searchParams.set('gid', gid)
-  endpoint.searchParams.set('range', range || 'A:O')
+  endpoint.searchParams.set('range', range || 'A:Q')
   return endpoint.toString()
 }
 
 export class PublicGoogleSheetsSongRepository {
-  constructor({ sheetUrl, range = 'A:O' }) {
+  constructor({ sheetUrl, range = 'A:Q' }) {
     this.sheetUrl = sheetUrl
     this.range = range
   }
@@ -53,7 +53,7 @@ export class PublicGoogleSheetsSongRepository {
 
     const result = parseSongCsv(text)
     if (!result.songs.length) {
-      throw new PublicGoogleSheetsError('No valid songs were found in the public Sheet. Check the selected tab, A:O headers, and sharing settings.', 'NO_SONGS')
+      throw new PublicGoogleSheetsError('No valid songs were found in the public Sheet. Check the selected tab, A:Q headers, and sharing settings.', 'NO_SONGS')
     }
     return result
   }

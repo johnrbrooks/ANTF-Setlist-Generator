@@ -13,21 +13,36 @@ describe('print layout', () => {
     expect(pages.flat().map(({ setIndex }) => setIndex)).toEqual([0, 1, 2, 3, 4])
   })
 
+  it('groups every supported regular-set count without empty print pages', () => {
+    for (let count = 1; count <= 4; count += 1) {
+      const sets = Array.from({ length: count }, (_, index) => set(`Set ${index + 1}`, 10))
+      const pages = groupSetsForPrint(sets)
+      expect(pages.flat()).toHaveLength(count)
+      expect(pages.every((page) => page.length >= 1 && page.length <= 2)).toBe(true)
+    }
+  })
+
   it('counts a combined tuning and guitar change as one printed transition row', () => {
     const songs = [song('1'), song('2', 'Drop D', true), song('3', 'Drop D', false)]
     expect(countPrintTransitionRows(songs)).toBe(2)
+  })
+
+  it('counts display-only bass tuning transitions without changing guitar metrics', () => {
+    const songs = [{ ...song('1'), bassTuning: '' }, { ...song('2'), bassTuning: 'Drop D' }]
+    expect(countPrintTransitionRows(songs)).toBe(1)
   })
 
   it('uses definitive row-height breakpoints as songs and filters consume space', () => {
     const noFilters = { artist: false, genre: false, vocal: false, duration: false, guitars: false, tuning: false, tempo: false, key: false }
     const allFilters = Object.fromEntries(Object.keys(noFilters).map((key) => [key, true]))
 
-    expect(PRINT_ROW_HEIGHT_BREAKPOINTS.map(({ density }) => density)).toEqual(['spacious', 'roomy', 'standard', 'compact', 'dense'])
+    expect(PRINT_ROW_HEIGHT_BREAKPOINTS.map(({ density }) => density)).toEqual(['spacious', 'roomy', 'standard', 'compact', 'dense', 'ultra'])
     expect(calculateEffectivePrintRowHeight(set('Short', 10), noFilters)).toBe(70)
     expect(calculateEffectivePrintRowHeight(set('Filtered', 14), allFilters)).toBe(36)
     expect(getPrintDensity([set('Short', 10)], noFilters)).toBe('spacious')
     expect(getPrintDensity([set('Filtered', 14)], allFilters)).toBe('standard')
     expect(getPrintDensity([set('Long', 20)], allFilters)).toBe('dense')
+    expect(getPrintDensity([set('Extended', 30)], allFilters)).toBe('ultra')
     expect(buildPrintPages([set('Set 1', 10)], noFilters)[0]).toMatchObject({ density: 'spacious', effectiveRowHeight: 70 })
   })
 })

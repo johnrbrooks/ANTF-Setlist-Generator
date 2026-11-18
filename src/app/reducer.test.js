@@ -19,10 +19,17 @@ describe('app reducer', () => {
   })
 
   it('rejects invalid configuration values at the state boundary', () => {
-    const invalidMinutes = appReducer(initialState, { type: 'SET_SETTING', name: 'targetMinutes', value: 90 })
-    const invalidBuffer = appReducer(initialState, { type: 'SET_SETTING', name: 'bufferSeconds', value: 17 })
+    const invalidMinutes = appReducer(initialState, { type: 'SET_SETTING', name: 'targetMinutes', value: 91 })
+    const invalidBuffer = appReducer(initialState, { type: 'SET_SETTING', name: 'bufferSeconds', value: 61 })
     expect(invalidMinutes).toBe(initialState)
     expect(invalidBuffer).toBe(initialState)
+  })
+
+  it('accepts the expanded set, duration, and buffer ranges', () => {
+    const oneSet = appReducer(initialState, { type: 'SET_SETTING', name: 'numSets', value: 1 })
+    const longSet = appReducer(oneSet, { type: 'SET_SETTING', name: 'targetMinutes', value: 90 })
+    const flexibleBuffer = appReducer(longSet, { type: 'SET_SETTING', name: 'bufferSeconds', value: 17 })
+    expect(flexibleBuffer.settings).toMatchObject({ numSets: 1, targetMinutes: 90, bufferSeconds: 17 })
   })
 
   it('moves a regular set to a new position, relabels it, and remaps locks', () => {
@@ -51,5 +58,12 @@ describe('app reducer', () => {
     }
     const next = appReducer(state, { type: 'MOVE_SONG', fromSet: 0, fromIndex: 3, toSet: 0, toIndex: 1 })
     expect(next).toBe(state)
+  })
+
+  it('clears every lock without changing the current sets', () => {
+    const sets = [{ id: 'set-1', title: 'Set 1', songs: [song('a')] }]
+    const next = appReducer({ ...initialState, sets, lockedSlots: { '0-0': 'a' } }, { type: 'CLEAR_LOCKS' })
+    expect(next.lockedSlots).toEqual({})
+    expect(next.sets).toBe(sets)
   })
 })

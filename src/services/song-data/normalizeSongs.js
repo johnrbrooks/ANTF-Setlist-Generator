@@ -29,6 +29,7 @@ export function normalizeRows(rows) {
   const songs = []
   const issues = []
   const seenIds = new Set()
+  let defaultedEnergyCount = 0
 
   rows.forEach((row, index) => {
     const rowNumber = index + 2
@@ -37,6 +38,9 @@ export function normalizeRows(rows) {
     const rawId = String(getValue(row, ['Song ID', 'ID'])).trim()
     const durationSec = parseDuration(getValue(row, ['Song Length', 'Length', 'Duration']))
     const encoreOnly = parseBoolean(getValue(row, ['Encore Only']))
+    const rawEnergy = getValue(row, ['Energy Rating', 'Energy'])
+    const parsedEnergy = Number(rawEnergy)
+    const energyRating = Number.isInteger(parsedEnergy) && parsedEnergy >= 1 && parsedEnergy <= 5 ? parsedEnergy : 3
     const id = rawId || legacyId(title, artist)
 
     if (!rawId && title) {
@@ -53,9 +57,11 @@ export function normalizeRows(rows) {
       durationSec: durationSec ?? 0,
       twoGuitars: parseBoolean(getValue(row, ['2 Guitars?', 'Two Guitars', 'Guitar'])),
       tuning: String(getValue(row, ['Tuning'])).trim(),
+      bassTuning: String(getValue(row, ['Bass Tuning'])).trim(),
       weight: Number(getValue(row, ['Weighting', 'Weight'])),
       genre: String(getValue(row, ['Style', 'Genre'])).trim(),
       vocalDifficulty: Number(getValue(row, ['Vocal Difficulty', 'Vocal'])),
+      energyRating,
       opener: parseBoolean(getValue(row, ['Opener'])),
       closer: parseBoolean(getValue(row, ['Closer'])),
       encore: parseBoolean(getValue(row, ['Encore'])) || encoreOnly,
@@ -73,8 +79,17 @@ export function normalizeRows(rows) {
       return
     }
     seenIds.add(parsed.data.id)
+    if (rawEnergy === '' || energyRating !== parsedEnergy) defaultedEnergyCount += 1
     songs.push(parsed.data)
   })
+
+  if (defaultedEnergyCount > 0) {
+    issues.push({
+      row: 0,
+      level: 'warning',
+      message: `${defaultedEnergyCount} song${defaultedEnergyCount === 1 ? '' : 's'} had a missing or invalid Energy Rating; neutral value 3 was used.`,
+    })
+  }
 
   return { songs, issues, loadedAt: new Date().toISOString() }
 }

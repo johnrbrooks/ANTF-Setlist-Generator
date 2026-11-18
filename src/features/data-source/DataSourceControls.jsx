@@ -12,7 +12,7 @@ export default function DataSourceControls({ sourceStatus, source, configured, p
         ) : (
           <AppButton w={mobileActionWidth} tone="primary" size="sm" onClick={onRefresh} disabled={sourceStatus.loading}>{sourceStatus.loading ? 'Refreshing…' : '↻ Refresh Songs'}</AppButton>
         )}
-        <AppButton as="label" role="button" tabIndex="0" w={mobileActionWidth} tone="success" size="sm" cursor="pointer" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.querySelector('input')?.click() } }}>
+        <AppButton as="label" role="button" tabIndex="0" w={mobileActionWidth} tone="secondary" size="sm" cursor="pointer" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.querySelector('input')?.click() } }}>
           Load CSV<input type="file" accept=".csv,text/csv" hidden onChange={(event) => { onCsvFile(event.target.files?.[0]); event.target.value = '' }} />
         </AppButton>
         <AppButton w={mobileActionWidth} tone="pool" size="sm" onClick={onOpenPool}>📋 Song Pool ({poolSize})</AppButton>
