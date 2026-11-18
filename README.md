@@ -70,7 +70,7 @@ The UI never reads Google or CSV rows directly. Both repositories return the sam
 ## Railway deployment
 
 1. Push this directory to a GitHub repository and create a Railway service from it.
-2. Add `VITE_GOOGLE_SHEET_URL` and `VITE_GOOGLE_SHEET_RANGE` in Railway before building.
+2. Add `VITE_GOOGLE_SHEET_URL`, `VITE_GOOGLE_SHEET_RANGE`, and `VITE_SITE_URL` in Railway before building. Set `VITE_SITE_URL` to the public origin without a trailing slash, such as `https://setlists.example.com`, so shared-link preview images use an absolute URL.
 3. Generate a stable Railway domain or attach a custom domain.
 
 `railway.json` configures `npm run build` and `npm run start`. The production command serves `dist` as a single-page application on Railway's `$PORT`.

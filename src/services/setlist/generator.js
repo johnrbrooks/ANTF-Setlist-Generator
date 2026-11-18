@@ -1,5 +1,5 @@
 import { MAX_GENERATION_ATTEMPTS, MAX_VALID_CANDIDATES, SET_TOLERANCE_SECONDS, WEIGHT_MULTIPLIER } from '../../domain/constants'
-import { calculateSetMetrics, countTransitions } from './metrics'
+import { calculateAverageEnergy, calculateSetMetrics, countTransitions } from './metrics'
 
 export function weightedPick(pool, usedIds = new Set(), rng = Math.random) {
   const candidates = pool.filter((song) => !usedIds.has(song.id))
@@ -412,7 +412,7 @@ export function generateSetlist({ songs, settings, excludedIds = [], lockedSlots
         score: Math.round(bestCost * 100) / 100,
         averageEnergyBySet: bestSets.map((set) => ({
           title: set.title,
-          average: Math.round(set.songs.reduce((total, song) => total + (Number(song.energyRating) || 3), 0) / set.songs.length * 10) / 10,
+          average: calculateAverageEnergy(set.songs),
         })),
       },
     }

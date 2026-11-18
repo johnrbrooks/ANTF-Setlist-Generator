@@ -23,6 +23,12 @@ export function countTransitions(songs) {
   return { tuningChanges, guitarChanges }
 }
 
+export function calculateAverageEnergy(songs) {
+  if (!songs.length) return 0
+  const total = songs.reduce((sum, song) => sum + (Number(song.energyRating) || 3), 0)
+  return Math.round((total / songs.length) * 10) / 10
+}
+
 export function calculateSetMetrics(songs, bufferSeconds) {
   const songSeconds = songs.reduce((total, song) => total + song.durationSec, 0)
   const bufferTotal = Math.max(0, songs.length - 1) * bufferSeconds
@@ -30,6 +36,7 @@ export function calculateSetMetrics(songs, bufferSeconds) {
     songSeconds,
     bufferSeconds: bufferTotal,
     totalSeconds: songSeconds + bufferTotal,
+    averageEnergy: calculateAverageEnergy(songs),
     ...countTransitions(songs),
   }
 }

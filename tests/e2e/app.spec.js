@@ -11,10 +11,31 @@ async function showDisplayFilters(page, labels) {
   for (const label of labels) await page.getByLabel(label, { exact: true }).check()
 }
 
+test('exposes branded browser, home-screen, and link-preview assets', async ({ page }) => {
+  await page.goto('/')
+  await expect(page).toHaveTitle('ANTF Setlist Generator')
+  expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/favicon-32.png')
+  expect(await page.locator('link[rel="apple-touch-icon"]').getAttribute('href')).toBe('/apple-touch-icon.png')
+  expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('/site.webmanifest')
+  expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toMatch(/\/antf-social-preview\.png$/)
+  expect(await page.locator('meta[name="twitter:card"]').getAttribute('content')).toBe('summary_large_image')
+
+  const preview = await page.request.get('/antf-social-preview.png')
+  expect(preview.ok()).toBe(true)
+  expect(preview.headers()['content-type']).toContain('image/png')
+})
+
 test('loads the master CSV without generating until requested', async ({ page }) => {
   await page.goto('/')
+  await expect(page.getByRole('status', { name: /songs loaded/ })).toHaveCount(0)
   await page.getByLabel('Load CSV').setInputFiles(path.join(root, 'Song List - MASTER LIST.csv'))
   await expect(page.getByText(/Song List - MASTER LIST.csv • 85 songs/)).toBeVisible()
+  const readyStatus = page.getByRole('status', { name: 'Ready, 85 songs loaded' })
+  await expect(readyStatus).toContainText('Ready (85)')
+  expect(await readyStatus.evaluate((element) => {
+    const bounds = element.getBoundingClientRect()
+    return bounds.left >= 0 && bounds.right <= window.innerWidth && element.scrollWidth <= element.clientWidth + 1
+  })).toBe(true)
   await expect(page.getByText('Set 1', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Print/ })).toBeDisabled()
 
@@ -84,6 +105,9 @@ test('reports generation quality and supports controlled song replacement', asyn
   await page.getByRole('button', { name: generateButtonName }).click()
   await expect(page.locator('.generation-feedback:visible')).toContainText(/Compared \d+ valid arrangement/, { timeout: 15_000 })
   await expect(page.getByLabel('Show Bass Tuning', { exact: true })).toBeChecked()
+  const setMetadata = page.locator('.set-meta:visible')
+  expect(await setMetadata.count()).toBeGreaterThan(0)
+  await expect(setMetadata.first()).toContainText(/Energy [1-5]\.\d\/5 • T\d+ \/ G\d+/)
 
   const targetSongIndex = 4
   const targetSongName = page.locator('.song-name').nth(targetSongIndex)

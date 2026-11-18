@@ -175,6 +175,7 @@ export default function App() {
             source={state.source}
             configured={googleConfigured}
             poolSize={activeRegularPool.length}
+            loadedCount={state.songs.length}
             hasSetlist={Boolean(state.sets.length)}
             onLoadGoogle={loadGoogleSongs}
             onRefresh={loadGoogleSongs}
